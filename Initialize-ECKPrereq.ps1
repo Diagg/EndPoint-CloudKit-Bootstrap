@@ -47,8 +47,9 @@ Download ans store in "$env:temp\ECK-Content" two scripts from Gist !
 # Auto Update: NO
 # By Diagg/OSD-Couture.com
 # 
-# Version 1.1 - 17/03/2022 - Added check for Internt connection, Nuget.exe is now an option
-# Version 1.2 - 18/03/2022 - Added support for loading scripts in bulk, Added support for Importing (executing) scripts in bulk 
+# Version 1.1 - 17/03/2022 - Added check for Internt connection, Nuget.exe is now an option.
+# Version 1.2 - 18/03/2022 - Added support for loading scripts in bulk, Added support for Importing (executing) scripts in bulk. 
+# Version 1.3 - 20/03/2022 - Changed default logging to file.
 
 
 Function Initialize-ECKPrereq
@@ -83,12 +84,12 @@ Function Initialize-ECKPrereq
                         Catch
                             {
                                 $Message = "[ERROR] No internet connection available, Unable to Download Nuget Provider, Aborting !!"
-                                If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {Write-Output $Message}
+                                If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
                                 Exit 1
                             }
                     }
                 $Message = "Nuget provider installed version: $(((Get-PackageProvider -Name 'nuget'|Sort-Object|Select-Object -First 1).version.tostring()))"
-                If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {Write-Output $Message}
+                If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
 
 
                 ## Trust PSGallery
@@ -97,7 +98,7 @@ Function Initialize-ECKPrereq
                 ## Import Powershell Get
                 If (-not (Get-Module PowershellGet)) {Import-Module PowershellGet}
                 $Message = "PowershellGet module installed version: $(((Get-Module PowerShellGet|Sort-Object|Select-Object -First 1).version.tostring()))"
-                If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {Write-Output $Message}
+                If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
 
                 ##Install Nuget.Exe
                 If ($NugetDevTool -eq $true)
@@ -119,12 +120,12 @@ Function Initialize-ECKPrereq
                                 Import-Module $Mod -Force
                                 If ($Mod = 'endpointcloudkit'){$ECK = $true} 
                                 $Message = "$Mod module installed version: $(((Get-Module $mod|Sort-Object|Select-Object -last 1).version.tostring()))"
-                                If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {Write-Output $Message}
+                                If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
                             }
                         Else
                             {
                                 $Message = "[Error] Unable to install Module $Mod, Aborting!!!"
-                                If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {Write-Output $Message}
+                                If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
                                 Exit 1
                             }
                     }
@@ -138,13 +139,13 @@ Function Initialize-ECKPrereq
                             {
                                 $Fileraw = (Invoke-WebRequest -URI $ScriptURI -UseBasicParsing -ErrorAction Stop).content
                                 $Message = "Running script $($ScriptURI.split("/")[-1]) !!!" 
-                                If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {Write-Output $Message}
+                                If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
                                 Invoke-Command $Fileraw -ErrorAction stop 
                             }
                         Catch
                             {
                                 $Message = "[ERROR] Unable to get script content or error in execution, Aborting !!!" 
-                                If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {Write-Output $Message}
+                                If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
                                 Exit 1
                             }
                     }
@@ -158,22 +159,21 @@ Function Initialize-ECKPrereq
                             {
                                 $Fileraw = (Invoke-WebRequest -URI $ScriptURI -UseBasicParsing -ErrorAction Stop).content
                                 $Message = "Saving script to $scriptPath\$($ScriptURI.split("/")[-1]) !!!" 
-                                If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {Write-Output $Message}
+                                If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
                                 $Fileraw | Out-File -FilePath "$scriptPath\$($ScriptURI.split("/")[-1])" -Encoding utf8 -force
                             }
                         Catch
                             {
                                 $Message = "[ERROR] Unable to get script content, Aborting !!!" 
-                                If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {Write-Output $Message}
+                                If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
                                 Exit 1
                             }
                     }
-
             } 
         Catch 
             {
                 $Message = "[Error] Unable to install default providers, Aborting!!!"
-                If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {Write-Output $Message}
+                If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
                 Exit 1
             }
     }
@@ -207,12 +207,12 @@ Function Get-ModuleNewVersion
                 If (-not ($null -eq $version)) 
                     {
                         $Message = "[Warning] No internet connection available, continuing with local version $version of $ModuleName"
-                        If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message -type 2} else {Write-Output $Message}
+                        If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message -type 2} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
                     }
                 Else
                     {
                         $Message = "[ERROR] No internet connection available, unable to load module $ModuleName, Aborting !!!"
-                        If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message -type 3} else {Write-Output $Message}
+                        If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message -type 3} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
                         Exit 1
                     }  
             }
@@ -229,7 +229,7 @@ Function Get-ModuleNewVersion
         if ([version]"$a" -ge [version]"$b") 
             {
                 $Message = "Module $ModuleName Locale version [$a] is equal or greater than online version [$b], no update requiered"
-                If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {Write-Output $Message}
+                If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
                 return $true
             }
         else 
@@ -237,7 +237,7 @@ Function Get-ModuleNewVersion
                 If ($b -ne "0")
                     {
                         $Message =  "Module $ModuleName Locale version [$a] is lower than online version [$b], Updating Module !"
-                        If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {Write-Output $Message}
+                        If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
                         If ($a -eq "0.0"){Install-Module -Name $ModuleName -Force}
                         Else {Update-Module -Name $ModuleName -Force}
                         return $true
@@ -245,7 +245,7 @@ Function Get-ModuleNewVersion
                 Else
                     {
                         $message = "[ERROR] Module $ModuleName not found online, unable to download, aborting!"
-                        If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message -level 3} else {Write-Output $Message}
+                        If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message -level 3} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
                         return $false
                     }
             }
@@ -270,8 +270,8 @@ function Format-GitHubURL
             {
                 If ($URI -notlike "*/raw.githubusercontent.com*" -and $URI -notlike "*//gist.githubusercontent.com*") 
                     {
-                        $Message = "[ERROR] Unsupported URI $URI, Aborting !!!"
-                        If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {Write-Output $Message}
+                        $Message = "[ERROR] Unsupported Gist/Github URI $URI, Aborting !!!"
+                        If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
                         Exit 1
                     }
             }
