@@ -47,18 +47,18 @@ Initialize-ECKPrereq -ScriptToImport 'https://github.com/DanysysTeam/PS-SFTA/blo
 ```
 
 a few notes about this parameter:
-- You can execute as many script as you want using coma separator.  
+- You can execute as many scripts as you want using coma separators.  
 - Scripts are executed after module import.
-- Executed scripts can harm/break/nuke your system. Be very carefull about what you want to run ! At first this option was devellopped to run scripts mades of function like [this one](https://github.com/DanysysTeam/PS-SFTA/blob/master/SFTA.ps1). Of course you can run anything, but this kind of script give you back control on what and when to run your stuffs.
+- Executed scripts can harm/break/nuke your system. Be very carefull about what you run ! At first this option was devellopped to run scripts filled out only with functions like [this one](https://github.com/DanysysTeam/PS-SFTA/blob/master/SFTA.ps1). Of course you can run anything, but using 'Function's script' give you back control on what and when to run your code.
 
 You can download locally any script from Gist/Github using the ``` -ScriptToLoad``` parameter:
  ```powershell
 Initialize-ECKPrereq -ScriptToLoad 'https://gist.github.com/Diagg/f4b696aa5cd482f672477dffa0712d87','https://gist.github.com/Diagg/756d7564f342b8cfcae26ccead235f08'
 ```
-Scripts are stored in ``` "$env:temp\ECK-Content" ``` by default, you set your own path using parameter ``` -ScriptPath``` :
+Scripts are stored in ``` "$env:temp\ECK-Content" ``` by default, you can set your own path using parameter ``` -ScriptPath``` :
  ```powershell
 Initialize-ECKPrereq -ScriptToLoad 'https://gist.github.com/Diagg/f4b696aa5cd482f672477dffa0712d87'-scriptToLoad 'C:\temp'
 ```
 
-The script log his own execution in ```"$env:temp\ECK-Init.log"``` you log to somewhere else using the ```-LogPath``` parameter.
+The script log his own execution in ```"$env:temp\ECK-Init.log"``` you can log to somewhere else using the ```-LogPath``` parameter.
 
