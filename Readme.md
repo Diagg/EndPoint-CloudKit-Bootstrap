@@ -63,3 +63,4 @@ Initialize-ECKPrereq -ScriptToLoad 'https://gist.github.com/Diagg/f4b696aa5cd482
 The script log his own execution in ```"$env:temp\ECK-Init.log"``` you can log to somewhere else using the ```-LogPath``` parameter.
 
 Diagg/OSD-Couture.com
+
