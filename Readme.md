@@ -1,7 +1,7 @@
 # Endpoint Cloud Kit Bootstrap
 [Endpoint Cloud Kit](https://github.com/Diagg/EndPoint-CloudKit) Module (ECK) is a set of cmdlet to help building scripts or applications deployed by your MDM (Intune/Workspace One...)
 
-That's being said, before using any module, you need to setup a few things on your local PC to allow download from the Powershell Gallery! This is the purpose of this bootstrap, but wait ! there's also a few goodies to make life easier:
+That's being said, before using any module, you need to setup a few things on your local PC to allow download from the Powershell Gallery! This is the purpose of this bootstrap ! there's also a few goodies that will make life easier:
 
 ## Description
 This set of functions will do the following:
@@ -17,12 +17,13 @@ This set of functions will do the following:
 
 
 ## Installation
-If you just wish to install Endpoint Cloud Kit on your devellopment environment, the Bootstrapper is perhaps a bit to much. You can simply run the following commands:
+If you just wish to install Endpoint Cloud Kit on your devellopment environment, the Bootstrapper (Initialize-ECKPrereq.ps1) is perhaps a bit to much. You can simply run the following commands:
 ```powershell
 Install-Module EndpointCloudKit 
 Import-module EndpointCloudKit
 ```
-I you need to install Endpoint Cloud Kit on an MDM managed device you should embbed those lines at the begining of own script:
+I you need to install Endpoint Cloud Kit on an MDM managed device, the bootstrapper is what you need. But there is no need to download it directly. 
+The idea here is to retrive it from github wherever you are. To do this, you should embbed those lines at the begining of own script:
 ```powershell
 try
 	{
@@ -34,6 +35,7 @@ try
 catch
 	{ Write-Error  "[ERROR] Unable to load ECK, Aborting !" ; Exit  1}
 ```
+That's all, now you are ready to use Endpoint Cloud Kit !
 
 ## Options
 
