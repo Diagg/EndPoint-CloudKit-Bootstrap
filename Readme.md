@@ -26,7 +26,8 @@ I you need to install Endpoint Cloud Kit on an MDM managed device you should emb
 ```powershell
 try
 	{
-		$Bootstrap  = (Invoke-WebRequest  -URI  "https://raw.githubusercontent.com/Diagg/EndPoint-CloudKit-Bootstrap/master/Initialize-ECKPrereq.ps1"  -UseBasicParsing  -ErrorAction Stop).content
+		$URI = "https://raw.githubusercontent.com/Diagg/EndPoint-CloudKit-Bootstrap/master/Initialize-ECKPrereq.ps1"
+		$Bootstrap  = (Invoke-WebRequest  -URI $URI -UseBasicParsing  -ErrorAction Stop).content
 		Invoke-Command  $Bootstrap   -ErrorAction stop
 		Initialize-ECKPrereq
 	}
@@ -60,3 +61,4 @@ Initialize-ECKPrereq -ScriptToLoad 'https://gist.github.com/Diagg/f4b696aa5cd482
 ```
 
 The script log his own execution in ```"$env:temp\ECK-Init.log"``` you log to somewhere else using the ```-LogPath``` parameter.
+
