@@ -47,7 +47,7 @@ Initialize-ECKPrereq -ScriptToImport 'https://github.com/DanysysTeam/PS-SFTA/blo
 ```
 
 a few notes about this parameter:
-- You can execute as many scrip as you want using coma separator.  
+- You can execute as many script as you want using coma separator.  
 - Scripts are executed after module import.
 - Executed scripts can harm/break/nuke your system. Be very carefull about what you want to run ! At first this option was devellopped to run scripts mades of function like [this one](https://github.com/DanysysTeam/PS-SFTA/blob/master/SFTA.ps1). Of course you can run anything, but this kind of script give you back control on what and when to run your stuffs.
 
