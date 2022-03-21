@@ -12,24 +12,24 @@ This set of functions will do the following:
 - Download and install Nuget.exe (optional).
 - Install and import EndpointCloudKit Module.
 - Install and import any module of your choice from Powershell Gallery.
-- Copy localy  any script/file from Github or Gist
+- Copy locally  any script/file from Github or Gist
 - Download and execute any Powershell script from Github or Gist
 
 
 ## Installation
-If you just wish to install Endpoint Cloud Kit on your devellopment environment, the Bootstrapper (Initialize-ECKPrereq.ps1) is perhaps a bit to much. You can simply run the following commands:
+If you just wish to install Endpoint Cloud Kit on your development environment, the Bootstrap (Initialize-ECKPrereq.ps1) is perhaps a bit to much. You can simply run the following commands:
 ```powershell
 Install-Module EndpointCloudKit 
 Import-module EndpointCloudKit
 ```
-I you need to install Endpoint Cloud Kit on an MDM managed device, the bootstrapper is what you need. But there is no need to download it directly. 
-The idea here is to retrive it from github wherever you are. To do this, you should embbed those lines at the begining of own script:
+I you need to install Endpoint Cloud Kit on an MDM managed device, the bootstrap is what you need. But there is no need to download it directly. 
+The idea here is to retrieve it from github wherever you are. To do this, you should embed those lines at the beginning of own script:
 ```powershell
 try
 	{
 		$URI = "https://raw.githubusercontent.com/Diagg/EndPoint-CloudKit-Bootstrap/master/Initialize-ECKPrereq.ps1"
 		$Bootstrap  = (Invoke-WebRequest  -URI $URI -UseBasicParsing  -ErrorAction Stop).content
-		Invoke-Command  $Bootstrap   -ErrorAction stop
+		Invoke-Expression $Bootstrap -ErrorAction stop
 		Initialize-ECKPrereq
 	}
 catch
@@ -51,7 +51,7 @@ Initialize-ECKPrereq -ScriptToImport 'https://github.com/DanysysTeam/PS-SFTA/blo
 a few notes about this parameter:
 - You can execute as many scripts as you want using coma separators.  
 - Scripts are executed after module import.
-- Executed scripts can harm/break/nuke your system. Be very carefull about what you run ! At first this option was devellopped to run scripts filled out only with functions like [this one](https://github.com/DanysysTeam/PS-SFTA/blob/master/SFTA.ps1). Of course you can run anything, but using 'Function's script' give you back control on what and when to run your code.
+- Executed scripts can harm/break/nuke your system. Be very careful about what you run ! At first this option was developpes to run scripts filled out only with functions like [this one](https://github.com/DanysysTeam/PS-SFTA/blob/master/SFTA.ps1). Of course you can run anything, but using 'Function's script' give you back control on what and when to run your code.
 
 You can download locally any script from Gist/Github using the ``` -ScriptToLoad``` parameter:
  ```powershell
