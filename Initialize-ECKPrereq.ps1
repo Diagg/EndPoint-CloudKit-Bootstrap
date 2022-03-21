@@ -44,12 +44,13 @@ Download ans store in "$env:temp\ECK-Content" two scripts from Gist !
 # Product Name: Initialize-ECKPrereq.ps1
 # Publisher: OSD-Couture.com
 # Product Code: a2638c6c-8168-4c8e-a9df-1dbb1397ba58
-# Auto Update: NO
+# Auto Update: NO3
 # By Diagg/OSD-Couture.com
 # 
 # Version 1.1 - 17/03/2022 - Added check for Internt connection, Nuget.exe is now an option.
 # Version 1.2 - 18/03/2022 - Added support for loading scripts in bulk, Added support for Importing (executing) scripts in bulk. 
 # Version 1.3 - 20/03/2022 - Changed default logging to file.
+# Version 1.4 - 21/03/2022 - Fixed a lot of bugs !
 
 
 Function Initialize-ECKPrereq
@@ -63,7 +64,7 @@ Function Initialize-ECKPrereq
                 [String[]]$ScriptToImport # download scripts from Github and import them in the current Powershell session.
             )
         
-        If (-not (Test-Path $ScriptPath)){New-Item $ScriptPath -ItemType Directory -Force}
+        If (-not (Test-Path $ScriptPath)){New-Item $ScriptPath -ItemType Directory -Force|Out-Null}
 
         ## Set Tls to 1.2
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
@@ -78,7 +79,7 @@ Function Initialize-ECKPrereq
                 If ((Get-Module endpointcloudkit -ListAvailable).Name -eq 'EndpointCloudkit'){Import-Module EndpointCloudkit ; $ECK = $true} Else {$ECK = $False}
          
                 ## install providers
-                If (-not(Test-path "C:\Program Files\PackageManagement\ProviderAssemblies\nuget\2.8.5.208\Microsoft.PackageManagement.NuGetProvider.dl"))
+                If (-not(Test-path "C:\Program Files\PackageManagement\ProviderAssemblies\nuget\2.8.5.208\Microsoft.PackageManagement.NuGetProvider.dll"))
                     {
                         Try{Install-PackageProvider -Name 'nuget' -Force -ErrorAction stop |Out-Null}
                         Catch
@@ -110,6 +111,7 @@ Function Initialize-ECKPrereq
                 
                 # Installing Endpoint Cloud Kit
                 $Module += "endpointcloudkit"
+                $Module = $Module[-1..0]
 
                 # Installing modules
                 Foreach ($mod in $Module)
@@ -118,7 +120,7 @@ Function Initialize-ECKPrereq
                         If ($ModStatus -eq $true)
                             {
                                 Import-Module $Mod -Force
-                                If ($Mod = 'endpointcloudkit'){$ECK = $true} 
+                                If ($Mod -eq 'endpointcloudkit'){$ECK = $true} 
                                 $Message = "$Mod module installed version: $(((Get-Module $mod|Sort-Object|Select-Object -last 1).version.tostring()))"
                                 If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
                             }
@@ -140,7 +142,7 @@ Function Initialize-ECKPrereq
                                 $Fileraw = (Invoke-WebRequest -URI $ScriptURI -UseBasicParsing -ErrorAction Stop).content
                                 $Message = "Running script $($ScriptURI.split("/")[-1]) !!!" 
                                 If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
-                                Invoke-Command $Fileraw -ErrorAction stop 
+                                Invoke-expression $Fileraw -ErrorAction stop 
                             }
                         Catch
                             {
@@ -169,6 +171,9 @@ Function Initialize-ECKPrereq
                                 Exit 1
                             }
                     }
+
+                $Message = "All operation finished, Endpoint Cloud Kit and other dependencies initialized sucessfully!!!"
+                If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
             } 
         Catch 
             {
@@ -187,7 +192,7 @@ Function Get-ModuleNewVersion
         Param(
                 [Parameter(Mandatory = $true)][String]$ModuleName,
                 [String]$LogPath,
-                [String]$ECK
+                [String]$ECK=$false
             )
 
         #getting version of installed module
@@ -228,7 +233,7 @@ Function Get-ModuleNewVersion
  
         if ([version]"$a" -ge [version]"$b") 
             {
-                $Message = "Module $ModuleName Locale version [$a] is equal or greater than online version [$b], no update requiered"
+                $Message = "Module $ModuleName Local version [$a] is equal or greater than online version [$b], no update requiered"
                 If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
                 return $true
             }
@@ -236,7 +241,7 @@ Function Get-ModuleNewVersion
             {
                 If ($b -ne "0")
                     {
-                        $Message =  "Module $ModuleName Locale version [$a] is lower than online version [$b], Updating Module !"
+                        $Message =  "Module $ModuleName Local version [$a] is lower than online version [$b], Updating Module !"
                         If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
                         If ($a -eq "0.0"){Install-Module -Name $ModuleName -Force}
                         Else {Update-Module -Name $ModuleName -Force}
