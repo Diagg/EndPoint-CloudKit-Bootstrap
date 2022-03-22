@@ -1,4 +1,5 @@
-﻿<#
+﻿
+<#
 .SYNOPSIS
 Bootstrapper that Initialize environement to properly download script from Powershell Gallery.
 Then download EnpointCloudkit module plus any other module you like
@@ -52,7 +53,7 @@ Download ans store in "$env:temp\ECK-Content" two scripts from Gist !
 # Version 1.3 - 20/03/2022 - Changed default logging to file.
 # Version 1.4 - 21/03/2022 - Fixed a lot of bugs !
 # Version 1.5 - 22/03/2022 - Fixed a bug in Format-GitHubURL that produced non working URI
-# Version 1.6 - 22/03/2022 - Added Policy to block more that one update per day for modules.
+# Version 1.6.1 - 22/03/2022 - Added Policy to block more that one update per day for modules.
 
 
 Function Initialize-ECKPrereq
@@ -296,4 +297,3 @@ function Format-GitHubURL
         Return $URI
     }
 
-Initialize-ECKPrereq -Module "Evergreen" -ScriptToImport 'https://github.com/DanysysTeam/PS-SFTA/blob/master/SFTA.ps1'

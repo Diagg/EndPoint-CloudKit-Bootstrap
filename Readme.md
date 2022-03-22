@@ -29,7 +29,7 @@ try
 	{
 		$URI = "https://raw.githubusercontent.com/Diagg/EndPoint-CloudKit-Bootstrap/master/Initialize-ECKPrereq.ps1"
 		$Bootstrap  = (Invoke-WebRequest  -URI $URI -UseBasicParsing  -ErrorAction Stop).content
-		Invoke-Expression $Bootstrap -ErrorAction stop
+		Invoke-Expression ("<#" + $Bootstrap) -ErrorAction stop
 		Initialize-ECKPrereq
 	}
 catch
