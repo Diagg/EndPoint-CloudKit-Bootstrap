@@ -44,13 +44,15 @@ Download ans store in "$env:temp\ECK-Content" two scripts from Gist !
 # Product Name: Initialize-ECKPrereq.ps1
 # Publisher: OSD-Couture.com
 # Product Code: a2638c6c-8168-4c8e-a9df-1dbb1397ba58
-# Auto Update: NO3
+# Auto Update: NO
 # By Diagg/OSD-Couture.com
 # 
 # Version 1.1 - 17/03/2022 - Added check for Internt connection, Nuget.exe is now an option.
 # Version 1.2 - 18/03/2022 - Added support for loading scripts in bulk, Added support for Importing (executing) scripts in bulk. 
 # Version 1.3 - 20/03/2022 - Changed default logging to file.
 # Version 1.4 - 21/03/2022 - Fixed a lot of bugs !
+# Version 1.5 - 22/03/2022 - Fixed a bug in Format-GitHubURL that produced non working URI
+# Version 1.6 - 22/03/2022 - Added Policy to block more that one update per day for modules.
 
 
 Function Initialize-ECKPrereq
@@ -63,8 +65,9 @@ Function Initialize-ECKPrereq
                 [Parameter(ParameterSetName="Scriptload")][String]$ScriptPath = "$env:temp\ECK-Content", # Path where script are downloaded
                 [String[]]$ScriptToImport # download scripts from Github and import them in the current Powershell session.
             )
-        
+        ## Create Folders and registry keys
         If (-not (Test-Path $ScriptPath)){New-Item $ScriptPath -ItemType Directory -Force|Out-Null}
+        If (-not (test-path "HKLM:\SOFTWARE\ECK\DependenciesCheck")){New-item -Path "HKLM:\SOFTWARE\ECK\DependenciesCheck" -Force|Out-Null} 
 
         ## Set Tls to 1.2
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
@@ -172,13 +175,17 @@ Function Initialize-ECKPrereq
                             }
                     }
 
-                $Message = "All operation finished, Endpoint Cloud Kit and other dependencies initialized sucessfully!!!"
+                $Message = "All initialization operations finished, Endpoint Cloud Kit and other dependencies staged sucessfully!!!"
                 If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
             } 
         Catch 
             {
-                $Message = "[Error] Unable to install default providers, Aborting!!!"
-                If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
+                $Message = $_.Exception.Message.ToString()
+                If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message -Type 3} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
+                $Message =  $_.InvocationInfo.PositionMessage.ToString()
+                If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message -Type 3} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
+                $Message = "[Error] Unable to install default providers, Enpdoint Cloud Kit or Dependencies, Aborting!!!"
+                If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message -Type 3} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
                 Exit 1
             }
     }
@@ -187,13 +194,18 @@ Function Initialize-ECKPrereq
 Function Get-ModuleNewVersion
     {
         # Most code by https://blog.it-koehler.com/en/Archive/3359
-        # Version 1.1 - 10/03/2022 - Added check for Internt connection
+        # Version 1.1 - 10/03/2022 - Added check for Internet connection
 
         Param(
                 [Parameter(Mandatory = $true)][String]$ModuleName,
                 [String]$LogPath,
                 [String]$ECK=$false
             )
+
+        # Check if we need to update today
+        $lastEval = (Get-ItemProperty "HKLM:\SOFTWARE\ECK\DependenciesCheck" -name $ModuleName -ErrorAction SilentlyContinue).$ModuleName
+        If (![String]::IsNullOrWhiteSpace($lastEval)){If ((Get-date -Date $LastEval) -eq ((get-date).date)){Return $true}}
+        
 
         #getting version of installed module
         $version = (Get-Module -ListAvailable $ModuleName) | Sort-Object Version -Descending  | Select-Object Version -First 1
@@ -245,6 +257,7 @@ Function Get-ModuleNewVersion
                         If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
                         If ($a -eq "0.0"){Install-Module -Name $ModuleName -Force}
                         Else {Update-Module -Name $ModuleName -Force}
+                        Set-ItemProperty "HKLM:\SOFTWARE\ECK\DependenciesCheck" -Name $ModuleName -value $((get-date).date)            
                         return $true
                     }
                 Else
@@ -270,10 +283,10 @@ function Format-GitHubURL
                 If ($URI.Split("/")[$_.count-1] -notlike '*raw*'){$URI = "$URI/raw"}
             }
         ElseIf($URI -like '*/github.com*') ##This is a Github repo
-            {$URI = $URI -replace "github.com","raw.githubusercontent.com" -replace "blob/",""} 
+            {$URI = $URI -replace "blob/","raw/"} 
         Else
             {
-                If ($URI -notlike "*/raw.githubusercontent.com*" -and $URI -notlike "*//gist.githubusercontent.com*") 
+                If ($URI -notlike "*//gist.githubusercontent.com*") 
                     {
                         $Message = "[ERROR] Unsupported Gist/Github URI $URI, Aborting !!!"
                         If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
@@ -282,3 +295,5 @@ function Format-GitHubURL
             }
         Return $URI
     }
+
+Initialize-ECKPrereq -Module "Evergreen" -ScriptToImport 'https://github.com/DanysysTeam/PS-SFTA/blob/master/SFTA.ps1'
