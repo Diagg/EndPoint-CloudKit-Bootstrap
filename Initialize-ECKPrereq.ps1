@@ -19,10 +19,10 @@ Use EndPointCloudKit (ECK) if present
 .PARAMETER NugetDevTool
 set to $true to download and install Nuget.exe. Disabled by defaut, requiered if you publish module to the powershell Gallery
 
-.PARAMETER ScriptToLoad
-List of url script to download from Gist/Github. If parameter $ScriptPath is not set all scripts are saved to "$env:temp\ECK-Content" 
+.PARAMETER ContentToLoad
+List of url script to download from Gist/Github. If parameter $ContentPath is not set all scripts are saved to "$env:temp\ECK-Content" 
 
-.PARAMETER ScriptPath
+.PARAMETER ContentPath
 Specify local path where downloaded script will be stored.  
 
 .PARAMETER ScriptToImport
@@ -33,7 +33,7 @@ Intended to be used with scripts that only contains functions.
 all action are logged to the log file specified by the log parameter
 
 .EXAMPLE
-C:\PS> Initialize-ECKPrereq -Module "Evergreen","Az.Accounts" -LogPath "c:\Windows\logs\Init-ECK.log" -ScriptToImport "https://github.com/DanysysTeam/PS-SFTA/blob/master/SFTA.ps1" -ScriptToLoad "https://gist.github.com/Diagg/756d7564f342b8cfcae26ccead235f08","https://gist.github.com/Diagg/f4b696aa5cd482f672477dffa0712d87"
+C:\PS> Initialize-ECKPrereq -Module "Evergreen","Az.Accounts" -LogPath "c:\Windows\logs\Init-ECK.log" -ScriptToImport "https://github.com/DanysysTeam/PS-SFTA/blob/master/SFTA.ps1" -ContentToLoad "https://gist.github.com/Diagg/756d7564f342b8cfcae26ccead235f08","https://gist.github.com/Diagg/f4b696aa5cd482f672477dffa0712d87"
 
 Initialize PowershellGet, Import EndpointCloudKit, EverGreen dans Az.Account modules, 
 Log anything to c:\Windows\logs\Init-ECK.log.
@@ -54,6 +54,7 @@ Download ans store in "$env:temp\ECK-Content" two scripts from Gist !
 # Version 1.4 - 21/03/2022 - Fixed a lot of bugs !
 # Version 1.5 - 22/03/2022 - Fixed a bug in Format-GitHubURL that produced non working URI
 # Version 1.6.1 - 22/03/2022 - Added Policy to block more that one update per day for modules.
+# version 1.7 - 24/03/2023 - Download Hiddenw.exe 
 
 
 Function Initialize-ECKPrereq
@@ -62,12 +63,12 @@ Function Initialize-ECKPrereq
                 [String[]]$Module, #List of module to import separated by coma
                 [string]$LogPath = "$env:temp\ECK-Init.log", #Defaut log file path
                 [bool]$NugetDevTool = $false, #allow installation of nuget.exe, 
-                [Parameter(ParameterSetName="Scriptload")][String[]]$ScriptToLoad, # download scripts form Github and place them in $ScriptPath folder
-                [Parameter(ParameterSetName="Scriptload")][String]$ScriptPath = "$env:temp\ECK-Content", # Path where script are downloaded
+                [Parameter(ParameterSetName="Contentload")][String[]]$ContentToLoad, # download scripts form Github and place them in $ContentPath folder
+                [Parameter(ParameterSetName="Contentload")][String]$ContentPath = "$env:temp\ECK-Content", # Path where script are downloaded
                 [String[]]$ScriptToImport # download scripts from Github and import them in the current Powershell session.
             )
         ## Create Folders and registry keys
-        If (-not (Test-Path $ScriptPath)){New-Item $ScriptPath -ItemType Directory -Force|Out-Null}
+        If (-not (Test-Path $ContentPath)){New-Item $ContentPath -ItemType Directory -Force|Out-Null}
         If (-not (test-path "HKLM:\SOFTWARE\ECK\DependenciesCheck")){New-item -Path "HKLM:\SOFTWARE\ECK\DependenciesCheck" -Force|Out-Null} 
 
         ## Set Tls to 1.2
@@ -113,6 +114,10 @@ Function Initialize-ECKPrereq
                         If (-not (test-path "$NugetPath\Nuget.exe")){Invoke-WebRequest -Uri 'https://aka.ms/psget-nugetexe' -OutFile "$NugetPath\Nuget.exe" -ErrorAction SilentlyContinue}
                     }
                 
+                ##Install Hiddenw.exe
+                $PowershellwPath = 'C:\Windows\System32\WindowsPowerShell\v1.0'
+                If (-not (test-path "$PowershellwPath\Powershellw.exe")){Invoke-WebRequest -Uri 'https://github.com/SeidChr/RunHiddenConsole/releases/download/1.0.0-alpha.2/hiddenw.exe' -OutFile "$PowershellwPath\Powershellw.exe" -ErrorAction SilentlyContinue}
+
                 # Installing Endpoint Cloud Kit
                 $Module += "endpointcloudkit"
                 $Module = $Module[-1..0]
@@ -158,19 +163,19 @@ Function Initialize-ECKPrereq
 
                 
                 # Download Script and store them
-                Foreach ($cript in $ScriptToLoad)
+                Foreach ($File in $ContentToLoad)
                     {
-                        $ScriptURI = Format-GitHubURL -URI $cript -LogPath $LogPath -ECK $ECK
+                        $FiletURI = Format-GitHubURL -URI $File -LogPath $LogPath -ECK $ECK
                         Try 
                             {
-                                $Fileraw = (Invoke-WebRequest -URI $ScriptURI -UseBasicParsing -ErrorAction Stop).content
-                                $Message = "Saving script to $scriptPath\$($ScriptURI.split("/")[-1]) !!!" 
+                                $Fileraw = (Invoke-WebRequest -URI $FiletURI -UseBasicParsing -ErrorAction Stop).content
+                                $Message = "Saving content to $ContentPath\$($FiletURI.split("/")[-1]) !!!" 
                                 If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
-                                $Fileraw | Out-File -FilePath "$scriptPath\$($ScriptURI.split("/")[-1])" -Encoding utf8 -force
+                                $Fileraw | Out-File -FilePath "$ContentPath\$($FiletURI.split("/")[-1])" -Encoding utf8 -force
                             }
                         Catch
                             {
-                                $Message = "[ERROR] Unable to get script content, Aborting !!!" 
+                                $Message = "[ERROR] Unable to get content, Aborting !!!" 
                                 If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
                                 Exit 1
                             }
@@ -297,3 +302,4 @@ function Format-GitHubURL
         Return $URI
     }
 
+Initialize-ECKPrereq -Module "Evergreen" -LogPath "c:\Windows\logs\Init-ECK.log" -ContentToLoad "https://github.com/DanysysTeam/PS-SFTA/blob/master/SFTA.ps1"
