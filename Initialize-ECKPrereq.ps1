@@ -55,7 +55,7 @@ Download ans store in "$env:temp\ECK-Content" two scripts from Gist !
 # Version 1.5 - 22/03/2022 - Fixed a bug in Format-GitHubURL that produced non working URI
 # Version 1.6.1 - 22/03/2022 - Added Policy to block more that one update per day for modules.
 # version 1.7 - 24/03/2023 - Added download of Hiddenw.exe 
-# version 1.8 - 30/03/2023 - Added download of ServiceUI.exe 
+# version 1.8.1 - 30/03/2023 - Added download of ServiceUI.exe 
 
 
 Function Initialize-ECKPrereq
@@ -147,10 +147,10 @@ Function Initialize-ECKPrereq
 
                 ##Install SerciceUI.exe
                 $SrvUIPath = 'C:\Windows\System32\ServiceUI.exe'
-                If (-not (test-path $SrvUIPath)){Invoke-WebRequest -Uri 'https://github.com/SeidChr/RunHiddenConsole/releases/download/1.0.0-alpha.2/hiddenw.exe' -OutFile $SrvUIPath -ErrorAction SilentlyContinue}
+                If (-not (test-path $SrvUIPath)){Invoke-WebRequest -Uri 'https://github.com/Diagg/EndPoint-CloudKit-Bootstrap/blob/master/ServiceUI/ServiceUI_x64.exe' -OutFile $SrvUIPath -ErrorAction SilentlyContinue}
 
                 $SrvUIPath = 'C:\Windows\SysWOW64\ServiceUI.exe'
-                If (-not (test-path $SrvUIPath)){Invoke-WebRequest -Uri 'https://github.com/SeidChr/RunHiddenConsole/releases/download/1.0.0-alpha.2/hiddenw.exe' -OutFile $SrvUIPath -ErrorAction SilentlyContinue}
+                If (-not (test-path $SrvUIPath)){Invoke-WebRequest -Uri 'https://github.com/Diagg/EndPoint-CloudKit-Bootstrap/blob/master/ServiceUI/ServiceUI_x86.exe' -OutFile $SrvUIPath -ErrorAction SilentlyContinue}
 
 
 
