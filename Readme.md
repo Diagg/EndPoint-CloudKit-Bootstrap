@@ -1,7 +1,7 @@
 # Endpoint Cloud Kit Bootstrap
 [Endpoint Cloud Kit](https://github.com/Diagg/EndPoint-CloudKit) Module (ECK) is a set of cmdlet to help building scripts or applications deployed by your MDM (Intune/Workspace One...)
 
-That's being said, before using any module, you need to setup a few things on your local PC to allow download from the Powershell Gallery! This is the purpose of this bootstrap ! there's also a few goodies that will make life easier:
+That's being said, before using any Powershell module, There are few things that need to be configured on your local PC to allow download from the Powershell Gallery! This is the purpose of this bootstrap ! The script also allow downloading additional content from the interweb, and is a good starting point (whether or not you use ECK) if you are planning for Powershell within the cloud !
 
 ## Description
 This set of functions will do the following:
