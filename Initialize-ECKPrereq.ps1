@@ -54,7 +54,8 @@ Download ans store in "$env:temp\ECK-Content" two scripts from Gist !
 # Version 1.4 - 21/03/2022 - Fixed a lot of bugs !
 # Version 1.5 - 22/03/2022 - Fixed a bug in Format-GitHubURL that produced non working URI
 # Version 1.6.1 - 22/03/2022 - Added Policy to block more that one update per day for modules.
-# version 1.7 - 24/03/2023 - Download Hiddenw.exe 
+# version 1.7 - 24/03/2023 - Added download of Hiddenw.exe 
+# version 1.8 - 30/03/2023 - Added download of ServiceUI.exe 
 
 
 Function Initialize-ECKPrereq
@@ -67,6 +68,7 @@ Function Initialize-ECKPrereq
                 [Parameter(ParameterSetName="Contentload")][String]$ContentPath = "$env:temp\ECK-Content", # Path where script are downloaded
                 [String[]]$ScriptToImport # download scripts from Github and import them in the current Powershell session.
             )
+
         ## Create Folders and registry keys
         If (-not (Test-Path $ContentPath)){New-Item $ContentPath -ItemType Directory -Force|Out-Null}
         If (-not (test-path "HKLM:\SOFTWARE\ECK\DependenciesCheck")){New-item -Path "HKLM:\SOFTWARE\ECK\DependenciesCheck" -Force|Out-Null} 
@@ -106,18 +108,6 @@ Function Initialize-ECKPrereq
                 $Message = "PowershellGet module installed version: $(((Get-Module PowerShellGet|Sort-Object|Select-Object -First 1).version.tostring()))"
                 If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
 
-                ##Install Nuget.Exe
-                If ($NugetDevTool -eq $true)
-                    {
-                        $NugetPath = 'C:\ProgramData\Microsoft\Windows\PowerShell\PowerShellGet'
-                        If (-not (test-path $NugetPath)){New-item $NugetPath -ItemType Directory -Force -Confirm:$false -ErrorAction SilentlyContinue | Out-Null}
-                        If (-not (test-path "$NugetPath\Nuget.exe")){Invoke-WebRequest -Uri 'https://aka.ms/psget-nugetexe' -OutFile "$NugetPath\Nuget.exe" -ErrorAction SilentlyContinue}
-                    }
-                
-                ##Install Hiddenw.exe
-                $PowershellwPath = 'C:\Windows\System32\WindowsPowerShell\v1.0'
-                If (-not (test-path "$PowershellwPath\Powershellw.exe")){Invoke-WebRequest -Uri 'https://github.com/SeidChr/RunHiddenConsole/releases/download/1.0.0-alpha.2/hiddenw.exe' -OutFile "$PowershellwPath\Powershellw.exe" -ErrorAction SilentlyContinue}
-
                 # Installing Endpoint Cloud Kit
                 $Module += "endpointcloudkit"
                 $Module = $Module[-1..0]
@@ -140,6 +130,28 @@ Function Initialize-ECKPrereq
                                 Exit 1
                             }
                     }
+
+
+                ##Install Nuget.Exe
+                If ($NugetDevTool -eq $true)
+                    {
+                        $NugetPath = 'C:\ProgramData\Microsoft\Windows\PowerShell\PowerShellGet'
+                        If (-not (test-path $NugetPath)){New-item $NugetPath -ItemType Directory -Force -Confirm:$false -ErrorAction SilentlyContinue | Out-Null}
+                        If (-not (test-path "$NugetPath\Nuget.exe")){Invoke-WebRequest -Uri 'https://aka.ms/psget-nugetexe' -OutFile "$NugetPath\Nuget.exe" -ErrorAction SilentlyContinue}
+                    }
+                
+                ##Install Hiddenw.exe
+                $PowershellwPath = 'C:\Windows\System32\WindowsPowerShell\v1.0\Powershellw.exe'
+                If (-not (test-path $PowershellwPath)){Invoke-WebRequest -Uri 'https://github.com/SeidChr/RunHiddenConsole/releases/download/1.0.0-alpha.2/hiddenw.exe' -OutFile $PowershellwPath -ErrorAction SilentlyContinue}
+
+
+                ##Install SerciceUI.exe
+                $SrvUIPath = 'C:\Windows\System32\ServiceUI.exe'
+                If (-not (test-path $SrvUIPath)){Invoke-WebRequest -Uri 'https://github.com/SeidChr/RunHiddenConsole/releases/download/1.0.0-alpha.2/hiddenw.exe' -OutFile $SrvUIPath -ErrorAction SilentlyContinue}
+
+                $SrvUIPath = 'C:\Windows\SysWOW64\ServiceUI.exe'
+                If (-not (test-path $SrvUIPath)){Invoke-WebRequest -Uri 'https://github.com/SeidChr/RunHiddenConsole/releases/download/1.0.0-alpha.2/hiddenw.exe' -OutFile $SrvUIPath -ErrorAction SilentlyContinue}
+
 
 
                 # Download Script and execute
