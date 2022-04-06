@@ -1,5 +1,4 @@
-﻿
-<#
+﻿<#
 .SYNOPSIS
 Bootstrapper that Initialize environement to properly download script from Powershell Gallery.
 Then download EnpointCloudkit module plus any other module you like
@@ -35,7 +34,7 @@ all action are logged to the log file specified by the log parameter
 .EXAMPLE
 C:\PS> Initialize-ECKPrereq -Module "Evergreen","Az.Accounts" -LogPath "c:\Windows\logs\Init-ECK.log" -ScriptToImport "https://github.com/DanysysTeam/PS-SFTA/blob/master/SFTA.ps1" -ContentToLoad "https://gist.github.com/Diagg/756d7564f342b8cfcae26ccead235f08","https://gist.github.com/Diagg/f4b696aa5cd482f672477dffa0712d87"
 
-Initialize PowershellGet, Import EndpointCloudKit, EverGreen dans Az.Account modules, 
+Initialize PowershellGet, Import EndpointCloudKit, EverGreen and Az.Account modules, 
 Log anything to c:\Windows\logs\Init-ECK.log.
 Download and exectute SFTA.ps1 from Github.
 Download ans store in "$env:temp\ECK-Content" two scripts from Gist ! 
@@ -56,21 +55,22 @@ Download ans store in "$env:temp\ECK-Content" two scripts from Gist !
 # Version 1.6.1 - 22/03/2022 - Added Policy to block more that one update per day for modules.
 # version 1.7 - 24/03/2023 - Added download of Hiddenw.exe 
 # version 1.8.2 - 30/03/2023 - Added download of ServiceUI.exe 
-
+# version 1.9.0 - 05/04/2022 - Changed default Log path, use Set-ECKEnvironment
 
 Function Initialize-ECKPrereq
     {
         Param (
-                [String[]]$Module, #List of module to import separated by coma
-                [string]$LogPath = "$env:temp\ECK-Init.log", #Defaut log file path
-                [bool]$NugetDevTool = $false, #allow installation of nuget.exe, 
-                [Parameter(ParameterSetName="Contentload")][String[]]$ContentToLoad, # download scripts form Github and place them in $ContentPath folder
-                [Parameter(ParameterSetName="Contentload")][String]$ContentPath = "$env:temp\ECK-Content", # Path where script are downloaded
-                [String[]]$ScriptToImport # download scripts from Github and import them in the current Powershell session.
+                [String[]]$Module,                                                                          # List of module to import separated by coma
+                [string]$LogPath = "C:\Windows\Logs\ECK\ECK-Init.log",                                      # Defaut log file path
+                [bool]$NugetDevTool = $false,                                                               # Allow installation of nuget.exe, 
+                [Parameter(ParameterSetName="Contentload")][String[]]$ContentToLoad,                        # Download scripts form Github and place them in $ContentPath folder
+                [Parameter(ParameterSetName="Contentload")][String]$ContentPath = "$env:temp\ECK-Content",  # Path where script are downloaded
+                [String[]]$ScriptToImport                                                                   # download scripts from Github and import them in the current Powershell session.
             )
 
         ## Create Folders and registry keys
         If (-not (Test-Path $ContentPath)){New-Item $ContentPath -ItemType Directory -Force|Out-Null}
+        If (-not (Test-Path $(Split $LogPath ))){New-Item $(Split $LogPath) -ItemType Directory -Force|Out-Null}
         If (-not (test-path "HKLM:\SOFTWARE\ECK\DependenciesCheck")){New-item -Path "HKLM:\SOFTWARE\ECK\DependenciesCheck" -Force|Out-Null} 
 
         ## Set Tls to 1.2
@@ -83,7 +83,13 @@ Function Initialize-ECKPrereq
         Try 
             {
                 ##Log with previous version if any
-                If ((Get-Module endpointcloudkit -ListAvailable).Name -eq 'EndpointCloudkit'){Import-Module EndpointCloudkit ; $ECK = $true} Else {$ECK = $False}
+                If ((Get-Module endpointcloudkit -ListAvailable).Name -eq 'EndpointCloudkit')
+                    {
+                        Import-Module EndpointCloudkit
+                        Set-ECKEnvironment -FullGather -LogPath $LogPath
+                        $ModECK = $true
+                    } 
+                Else {$ModECK = $False}
          
                 ## install providers
                 If (-not(Test-path "C:\Program Files\PackageManagement\ProviderAssemblies\nuget\2.8.5.208\Microsoft.PackageManagement.NuGetProvider.dll"))
@@ -92,13 +98,12 @@ Function Initialize-ECKPrereq
                         Catch
                             {
                                 $Message = "[ERROR] No internet connection available, Unable to Download Nuget Provider, Aborting !!"
-                                If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
+                                If ($ModECK -eq $true){Write-ECKlog -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
                                 Exit 1
                             }
                     }
                 $Message = "Nuget provider installed version: $(((Get-PackageProvider -Name 'nuget'|Sort-Object|Select-Object -First 1).version.tostring()))"
-                If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
-
+                If ($ModECK -eq $true){Write-ECKlog -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
 
                 ## Trust PSGallery
                 If ((Get-PSRepository -Name "PsGallery").InstallationPolicy -ne "Trusted"){Set-PSRepository -Name 'PSGallery' -InstallationPolicy 'Trusted' -SourceLocation 'https://www.powershellgallery.com/api/v2'} 
@@ -106,7 +111,7 @@ Function Initialize-ECKPrereq
                 ## Import Powershell Get
                 If (-not (Get-Module PowershellGet)) {Import-Module PowershellGet}
                 $Message = "PowershellGet module installed version: $(((Get-Module PowerShellGet|Sort-Object|Select-Object -First 1).version.tostring()))"
-                If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
+                If ($ModECK -eq $true){Write-ECKlog -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
 
                 # Installing Endpoint Cloud Kit
                 $Module += "endpointcloudkit"
@@ -115,20 +120,19 @@ Function Initialize-ECKPrereq
                 # Installing modules
                 Foreach ($mod in $Module)
                     {
-                        $ModStatus = Get-ModuleNewVersion -modulename $Mod -LogPath $LogPath -ECK $ECK
+                        $ModStatus = Get-ModuleNewVersion -modulename $Mod -LogPath $LogPath
                         If ($ModStatus -eq $true)
                             {
                                 Import-Module $Mod -Force
-                                If ($Mod -eq 'endpointcloudkit'){$ECK = $true} 
-                                $Message = "$Mod module installed version: $(((Get-Module $mod|Sort-Object|Select-Object -last 1).version.tostring()))"
-                                If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
+                                If ($Mod -eq 'endpointcloudkit')
+                                    {
+                                        $ModECK = $true
+                                        Set-ECKEnvironment -FullGather -LogPath $LogPath
+                                    } 
+                                Write-ECKlog -Message "$Mod module installed version: $(((Get-Module $mod|Sort-Object|Select-Object -last 1).version.tostring()))"
                             }
                         Else
-                            {
-                                $Message = "[Error] Unable to install Module $Mod, Aborting!!!"
-                                If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
-                                Exit 1
-                            }
+                            {Write-ECKlog -Message "[Error] Unable to install Module $Mod, Aborting!!!" ; Exit 1}
                     }
 
 
@@ -156,53 +160,42 @@ Function Initialize-ECKPrereq
                 # Download Script and execute
                 Foreach ($cript in $ScriptToImport)
                     {
-                        $ScriptURI = Format-GitHubURL -URI $cript -LogPath $LogPath -ECK $ECK
+                        $ScriptURI = Format-GitHubURL -URI $cript -LogPath $LogPath
                         Try 
                             {
                                 $Fileraw = (Invoke-WebRequest -URI $ScriptURI -UseBasicParsing -ErrorAction Stop).content
-                                $Message = "Running script $($ScriptURI.split("/")[-1]) !!!" 
-                                If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
+                                Write-ECKlog -Message "Running script $($ScriptURI.split("/")[-1]) !!!"
                                 Invoke-expression $Fileraw -ErrorAction stop 
                             }
                         Catch
-                            {
-                                $Message = "[ERROR] Unable to get script content or error in execution, Aborting !!!" 
-                                If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
-                                Exit 1
-                            }
+                            {Write-ECKlog -Message "[ERROR] Unable to get script content or error in execution, Aborting !!!" ; Exit 1}
                     }
 
                 
                 # Download Script and store them
                 Foreach ($File in $ContentToLoad)
                     {
-                        $FiletURI = Format-GitHubURL -URI $File -LogPath $LogPath -ECK $ECK
+                        $FiletURI = Format-GitHubURL -URI $File -LogPath $LogPath
                         Try 
                             {
                                 $Fileraw = (Invoke-WebRequest -URI $FiletURI -UseBasicParsing -ErrorAction Stop).content
-                                $Message = "Saving content to $ContentPath\$($FiletURI.split("/")[-1]) !!!" 
-                                If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
+                                Write-ECKlog -Message "Saving content to $ContentPath\$($FiletURI.split("/")[-1]) !!!"
                                 $Fileraw | Out-File -FilePath "$ContentPath\$($FiletURI.split("/")[-1])" -Encoding utf8 -force
                             }
                         Catch
-                            {
-                                $Message = "[ERROR] Unable to get content, Aborting !!!" 
-                                If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
-                                Exit 1
-                            }
+                            {Write-ECKlog -Message "[ERROR] Unable to get content, Aborting !!!" ; Exit 1}
                     }
 
-                $Message = "All initialization operations finished, Endpoint Cloud Kit and other dependencies staged sucessfully!!!"
-                If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
+                Write-ECKlog -Message "All initialization operations finished, Endpoint Cloud Kit and other dependencies staged sucessfully!!!"
             } 
         Catch 
             {
                 $Message = $_.Exception.Message.ToString()
-                If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message -Type 3} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
+                If ($ModECK -eq $true){Write-ECKlog -Message $Message -Type 3} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
                 $Message =  $_.InvocationInfo.PositionMessage.ToString()
-                If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message -Type 3} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
+                If ($ModECK -eq $true){Write-ECKlog -Message $Message -Type 3} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
                 $Message = "[Error] Unable to install default providers, Enpdoint Cloud Kit or Dependencies, Aborting!!!"
-                If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message -Type 3} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
+                If ($ModECK -eq $true){Write-ECKlog -Message $Message -Type 3} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
                 Exit 1
             }
     }
@@ -215,8 +208,7 @@ Function Get-ModuleNewVersion
 
         Param(
                 [Parameter(Mandatory = $true)][String]$ModuleName,
-                [String]$LogPath,
-                [String]$ECK=$false
+                [String]$LogPath
             )
 
         # Check if we need to update today
@@ -241,12 +233,12 @@ Function Get-ModuleNewVersion
                 If (-not ($null -eq $version)) 
                     {
                         $Message = "[Warning] No internet connection available, continuing with local version $version of $ModuleName"
-                        If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message -type 2} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
+                        If ($null -ne $ECK){Write-ECKlog -Message $Message -type 2} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
                     }
                 Else
                     {
                         $Message = "[ERROR] No internet connection available, unable to load module $ModuleName, Aborting !!!"
-                        If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message -type 3} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
+                        If ($null -ne $ECK){Write-ECKlog -Message $Message -type 3} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
                         Exit 1
                     }  
             }
@@ -263,7 +255,7 @@ Function Get-ModuleNewVersion
         if ([version]"$a" -ge [version]"$b") 
             {
                 $Message = "Module $ModuleName Local version [$a] is equal or greater than online version [$b], no update requiered"
-                If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
+                If ($null -ne $ECK){Write-ECKlog -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
                 return $true
             }
         else 
@@ -271,16 +263,16 @@ Function Get-ModuleNewVersion
                 If ($b -ne "0")
                     {
                         $Message =  "Module $ModuleName Local version [$a] is lower than online version [$b], Updating Module !"
-                        If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
+                        If ($null -ne $ECK){Write-ECKlog -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
                         If ($a -eq "0.0"){Install-Module -Name $ModuleName -Force}
                         Else {Update-Module -Name $ModuleName -Force}
-                        Set-ItemProperty "HKLM:\SOFTWARE\ECK\DependenciesCheck" -Name $ModuleName -value $((get-date).date)            
+                        Set-ItemProperty "HKLM:\SOFTWARE\ECK\DependenciesCheck" -Name $ModuleName -value $((get-date).date)    
                         return $true
                     }
                 Else
                     {
                         $message = "[ERROR] Module $ModuleName not found online, unable to download, aborting!"
-                        If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message -level 3} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
+                        If ($null -ne $ECK){Write-ECKlog -Message $Message -level 3} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
                         return $false
                     }
             }
@@ -291,8 +283,7 @@ function Format-GitHubURL
         Param(
                 [Parameter(Mandatory = $true, Position=0)]
                 [String]$URI,
-                [String]$LogPath,
-                [String]$ECK
+                [String]$LogPath
             )
                 
         If($URI -like '*/gist.github.com*') ##This is a Gist
@@ -307,7 +298,7 @@ function Format-GitHubURL
                 If ($URI -notlike "*//gist.githubusercontent.com*") 
                     {
                         $Message = "[ERROR] Unsupported Gist/Github URI $URI, Aborting !!!"
-                        If ($ECK -eq $true){Write-ECKlog -Path $LogPath -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
+                        If ($null -ne $ECK){Write-ECKlog -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
                         Exit 1
                     }
             }
