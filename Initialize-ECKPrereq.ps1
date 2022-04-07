@@ -70,7 +70,7 @@ Function Initialize-ECKPrereq
 
         ## Create Folders and registry keys
         If (-not (Test-Path $ContentPath)){New-Item $ContentPath -ItemType Directory -Force|Out-Null}
-        If (-not (Test-Path $(Split $LogPath ))){New-Item $(Split $LogPath) -ItemType Directory -Force|Out-Null}
+        If (-not (Test-Path $(Split-Path $LogPath ))){New-Item $(Split-Path $LogPath) -ItemType Directory -Force|Out-Null}
         If (-not (test-path "HKLM:\SOFTWARE\ECK\DependenciesCheck")){New-item -Path "HKLM:\SOFTWARE\ECK\DependenciesCheck" -Force|Out-Null} 
 
         ## Set Tls to 1.2
