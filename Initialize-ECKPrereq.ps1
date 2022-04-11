@@ -55,7 +55,8 @@ Download ans store in "$env:temp\ECK-Content" two scripts from Gist !
 # Version 1.6.1 - 22/03/2022 - Added Policy to block more that one update per day for modules.
 # version 1.7 - 24/03/2023 - Added download of Hiddenw.exe 
 # version 1.8.2 - 30/03/2023 - Added download of ServiceUI.exe 
-# version 1.9.0 - 05/04/2022 - Changed default Log path, use Set-ECKEnvironment
+# version 1.9.1 - 05/04/2022 - Changed default Log path, use Set-ECKEnvironment
+# version 2.0 - 11/04/2022 - Now fully working under system account
 
 Function Initialize-ECKPrereq
     {
@@ -91,7 +92,7 @@ Function Initialize-ECKPrereq
                     } 
                 Else {$ModECK = $False}
          
-                ## install providers
+                ## install Nuget provider
                 If (-not(Test-path "C:\Program Files\PackageManagement\ProviderAssemblies\nuget\2.8.5.208\Microsoft.PackageManagement.NuGetProvider.dll"))
                     {
                         Try{Install-PackageProvider -Name 'nuget' -Force -ErrorAction stop |Out-Null}
@@ -105,13 +106,45 @@ Function Initialize-ECKPrereq
                 $Message = "Nuget provider installed version: $(((Get-PackageProvider -Name 'nuget'|Sort-Object|Select-Object -First 1).version.tostring()))"
                 If ($ModECK -eq $true){Write-ECKlog -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
 
-                ## Trust PSGallery
-                If ((Get-PSRepository -Name "PsGallery").InstallationPolicy -ne "Trusted"){Set-PSRepository -Name 'PSGallery' -InstallationPolicy 'Trusted' -SourceLocation 'https://www.powershellgallery.com/api/v2'} 
+                ## Install Packagemangment Module dependencie of Powershell Get if we are under system account
+                IF ((get-module PackageManagement -ListAvailable|Select-Object -first 1).version -notlike "1.4*" -and $env:UserProfile -eq 'C:\Windows\system32\config\systemprofile')
+                    {
+                        Try
+                            {
+                                $FileURI = "https://psg-prod-eastus.azureedge.net/packages/packagemanagement.1.4.7.nupkg"
+                                $Nupkg = "$ContentPath\$(($FileURI.split("/")[-1]).replace(".nupkg",".zip"))"
+                                Invoke-WebRequest -URI $FileURI -UseBasicParsing -ErrorAction Stop -OutFile $Nupkg
+                                Unblock-File -Path $Nupkg
+                            }
+                        Catch
+                            {
+                                $Message = "[ERROR] No internet connection available, Unable to Download Nuget Provider, Aborting !!"
+                                If ($ModECK -eq $true){Write-ECKlog -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
+                                Exit 1
+                            }
+
+                        ## Create Destination folder structure
+                        $ModulePath = "C:\Program Files\WindowsPowerShell\Modules\PackageManagement\1.4.7"
+                        If (-not(test-path $ModulePath)){New-item -Path $ModulePath -ItemType Directory -Force|Out-Null} 
+
+                        ## Uniziping File
+                        Expand-Archive -LiteralPath $Nupkg -DestinationPath $ModulePath -Force
+                        Remove-Item $Nupkg -Force -ErrorAction SilentlyContinue|Out-Null
+                        
+                        ## Clean bloatwares
+                        Remove-Item "$ModulePath\_rels" -Recurse -Force -ErrorAction SilentlyContinue|Out-Null
+                        Remove-Item "$ModulePath\package" -Recurse -Force -ErrorAction SilentlyContinue|Out-Null
+                        Remove-Item "$ModulePath\``[Content_Types``].xml"  -Force -ErrorAction SilentlyContinue|Out-Null
+                        Remove-Item "$ModulePath\PackageManagement.nuspec"  -Force -ErrorAction SilentlyContinue|Out-Null
+                    }
 
                 ## Import Powershell Get
                 If (-not (Get-Module PowershellGet)) {Import-Module PowershellGet}
                 $Message = "PowershellGet module installed version: $(((Get-Module PowerShellGet|Sort-Object|Select-Object -First 1).version.tostring()))"
                 If ($ModECK -eq $true){Write-ECKlog -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
+
+                ## Trust PSGallery
+                If ((Get-PSRepository -Name "PsGallery").InstallationPolicy -ne "Trusted"){Set-PSRepository -Name 'PSGallery' -InstallationPolicy 'Trusted' -SourceLocation 'https://www.powershellgallery.com/api/v2'} 
 
                 # Installing Endpoint Cloud Kit
                 $Module += "endpointcloudkit"
@@ -124,11 +157,7 @@ Function Initialize-ECKPrereq
                         If ($ModStatus -eq $true)
                             {
                                 Import-Module $Mod -Force
-                                If ($Mod -eq 'endpointcloudkit')
-                                    {
-                                        $ModECK = $true
-                                        Set-ECKEnvironment -FullGather -LogPath $LogPath
-                                    } 
+                                If ($Mod -eq 'endpointcloudkit' -and $ModECK -ne $true){Set-ECKEnvironment -FullGather -LogPath $LogPath ; $ModECK = $true} 
                                 Write-ECKlog -Message "$Mod module installed version: $(((Get-Module $mod|Sort-Object|Select-Object -last 1).version.tostring()))"
                             }
                         Else
@@ -147,15 +176,17 @@ Function Initialize-ECKPrereq
                 ##Install Hiddenw.exe
                 $PowershellwPath = 'C:\Windows\System32\WindowsPowerShell\v1.0\Powershellw.exe'
                 If (-not (test-path $PowershellwPath)){Invoke-WebRequest -Uri 'https://github.com/SeidChr/RunHiddenConsole/releases/download/1.0.0-alpha.2/hiddenw.exe' -OutFile $PowershellwPath -ErrorAction SilentlyContinue}
+                If (test-path $PowershellwPath){Write-ECKlog -Message "Successfully Downloaded $PowershellwPath !"}    
 
-
-                ##Install SerciceUI.exe
+                ##Install SerciceUI_X64.exe
                 $SrvUIPath = 'C:\Windows\System32\ServiceUI.exe'
                 If (-not (test-path $SrvUIPath)){Invoke-WebRequest -Uri $(Format-GitHubURL 'https://github.com/Diagg/EndPoint-CloudKit-Bootstrap/blob/master/ServiceUI/ServiceUI_x64.exe') -OutFile $SrvUIPath -ErrorAction SilentlyContinue}
+                If (test-path $SrvUIPath){Write-ECKlog -Message "Successfully Downloaded $SrvUIPath !"} 
 
+                ##Install SerciceUI_X86.exe                
                 $SrvUIPath = 'C:\Windows\SysWOW64\ServiceUI.exe'
                 If (-not (test-path $SrvUIPath)){Invoke-WebRequest -Uri $(Format-GitHubURL 'https://github.com/Diagg/EndPoint-CloudKit-Bootstrap/blob/master/ServiceUI/ServiceUI_x86.exe') -OutFile $SrvUIPath -ErrorAction SilentlyContinue}
-
+                If (test-path $SrvUIPath){Write-ECKlog -Message "Successfully Downloaded $SrvUIPath !"} 
 
                 # Download Script and execute
                 Foreach ($cript in $ScriptToImport)
@@ -179,7 +210,7 @@ Function Initialize-ECKPrereq
                         Try 
                             {
                                 $Fileraw = (Invoke-WebRequest -URI $FiletURI -UseBasicParsing -ErrorAction Stop).content
-                                Write-ECKlog -Message "Saving content to $ContentPath\$($FiletURI.split("/")[-1]) !!!"
+                                Write-ECKlog -Message "Succesfully downloaded content to $ContentPath\$($FiletURI.split("/")[-1]) !!!"
                                 $Fileraw | Out-File -FilePath "$ContentPath\$($FiletURI.split("/")[-1])" -Encoding utf8 -force
                             }
                         Catch
