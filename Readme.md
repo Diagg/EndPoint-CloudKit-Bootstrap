@@ -36,7 +36,7 @@ try
             }
     }
 catch
-	{ Write-Error  "[ERROR] Unable to load ECK, Aborting !" ; Exit  1}
+    { Write-Error  "[ERROR] Unable to load ECK, Aborting !" ; Exit  1}
 ```
 That's all, now you are ready to use Endpoint Cloud Kit, now you are ready to install anything from the Powershell Gallery !
 
