@@ -22,8 +22,10 @@ If you just wish to install Endpoint Cloud Kit on your development environment, 
 Install-Module EndpointCloudKit 
 Import-module EndpointCloudKit
 ```
-I you need to install Endpoint Cloud Kit on an MDM managed device, the bootstrap is what you need! There is no need to do the traditional download and then create a package. 
-The idea here is to retrieve the script from github wherever you are. To do this, you should embed those lines at the beginning of your own scripts:
+I you need to install Endpoint Cloud Kit on an MDM managed device, the bootstrap is what you need! 
+There is no need to do the traditional download and then create a package!
+The idea here is to retrieve the script from github wherever you are!
+To do this, you should embed those lines at the beginning of your own scripts:
 ```powershell
 try
     {
