@@ -27,18 +27,23 @@ There is no need to do the traditional download and then create a package!
 The idea here is to retrieve the script from github wherever you are!
 To do this, you should embed those lines at the beginning of your own scripts:
 ```powershell
-try
+Try
     {
-        If ([string]::IsNullOrWhiteSpace($ECK.ModVersion))
+        If ((get-module 'EndpointCloudKit' -ListAvailable).Version.Build -gt 11)
             {
-                $URI = "https://raw.githubusercontent.com/Diagg/EndPoint-CloudKit-Bootstrap/master/Initialize-ECKPrereq.ps1"
-                $Bootstrap  = (Invoke-WebRequest  -URI $URI -UseBasicParsing  -ErrorAction Stop).content
-                Invoke-Expression ("<#" + $Bootstrap) -ErrorAction stop
-                Initialize-ECKPrereq
+                If(-not (get-module 'EndpointCloudKit')){Import-Module 'EndpointCloudKit'}
+                Initialize-ECKPrereq -LogPath $LogDir
+            }
+        Else
+            {
+                $ScriptURI = "https://raw.githubusercontent.com/Diagg/EndPoint-CloudKit-Bootstrap/master/Initialize-ECKPrereq.ps1"
+                $Fileraw = (Invoke-WebRequest -URI $ScriptURI -UseBasicParsing -ErrorAction Stop).content
+                Invoke-Expression ("<#" + $Fileraw) -ErrorAction Stop
+                Initialize-ECKPrereq -LogPath $LogDir
             }
     }
-catch
-    { Write-Error  "[ERROR] Unable to load ECK, Aborting !" ; Exit  1}
+catch 
+    {Write-Error "[ERROR] Unable to load includes, Aborting !" ; Exit 1}
 ```
 That's all, now you are ready to use Endpoint Cloud Kit, now you are ready to install anything from the Powershell Gallery !
 
@@ -56,7 +61,7 @@ Initialize-ECKPrereq -ScriptToImport 'https://github.com/DanysysTeam/PS-SFTA/blo
 a few notes about this parameter:
 - You can execute as many scripts as you want using coma separators.  
 - Scripts are executed after module import.
-- To save on bandwidth and time processing, Modules are downloaded/updated one time per day.  
+- To save on bandwidth and time processing, Modules are downloaded/updated one time per day. No matter how many times the bootstrap is invoked  
 - Executed scripts can harm/break/nuke your system. Be very careful about what you run! At first this option was developpes to run scripts filled out only with functions like [this one](https://github.com/DanysysTeam/PS-SFTA/blob/master/SFTA.ps1). Of course you can run anything, but using 'Function's script' give you back control on what and when to run your code.
 
 You can download locally any script from Gist/Github using the ``` -ScriptToLoad``` parameter:

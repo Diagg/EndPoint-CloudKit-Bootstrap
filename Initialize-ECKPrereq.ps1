@@ -84,9 +84,10 @@ Function Initialize-ECKPrereq
         Try 
             {
                 ##Log with previous version if any
-                If ((Get-Module endpointcloudkit -ListAvailable).Name -eq 'EndpointCloudkit')
+                If ((Get-Module 'endpointcloudkit' -ListAvailable).Name -eq 'EndpointCloudkit')
                     {
-                        Import-Module EndpointCloudkit
+                        Remove-module 'endpointcloudkit' -ErrorAction SilentlyContinue
+                        Get-Module 'endpointcloudkit' -ListAvailable | Sort-Object Version -Descending  | Select-Object -First 1|Import-module
                         Set-ECKEnvironment -FullGather -LogPath $LogPath
                         $ModECK = $true
                     } 
@@ -139,7 +140,7 @@ Function Initialize-ECKPrereq
                     }
 
                 ## Import Powershell Get
-                If (-not (Get-Module PowershellGet)) {Import-Module PowershellGet}
+                If (-not (Get-Module PowershellGet)) {Get-Module 'PowershellGet' -ListAvailable | Sort-Object Version -Descending  | Select-Object -First 1|Import-module}
                 $Message = "PowershellGet module installed version: $(((Get-Module PowerShellGet|Sort-Object|Select-Object -First 1).version.tostring()))"
                 If ($ModECK -eq $true){Write-ECKlog -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
 
@@ -153,12 +154,13 @@ Function Initialize-ECKPrereq
                 # Installing modules
                 Foreach ($mod in $Module)
                     {
-                        $ModStatus = Get-ModuleNewVersion -modulename $Mod -LogPath $LogPath
-                        If ($ModStatus -eq $true)
+                        $ModStatus = Get-ECKNewModuleVersion -modulename $Mod -LogPath $LogPath
+                        If ($ModStatus -ne $false)
                             {
-                                Import-Module $Mod -Force
+                                Remove-module $mod -ErrorAction SilentlyContinue
+                                $LoadedMod = Get-Module $mod -ListAvailable | Sort-Object Version -Descending  | Select-Object -First 1|Import-module -passthru
                                 If ($Mod -eq 'endpointcloudkit' -and $ModECK -ne $true){Set-ECKEnvironment -FullGather -LogPath $LogPath ; $ModECK = $true} 
-                                Write-ECKlog -Message "$Mod module installed version: $(((Get-Module $mod|Sort-Object|Select-Object -last 1).version.tostring()))"
+                                Write-ECKlog -Message "$Mod module installed version: $($LoadedMod.version.tostring())"
                             }
                         Else
                             {Write-ECKlog -Message "[Error] Unable to install Module $Mod, Aborting!!!" ; Exit 1}
@@ -232,10 +234,11 @@ Function Initialize-ECKPrereq
     }
 
 
-Function Get-ModuleNewVersion
+Function Get-ECKNewModuleVersion
     {
         # Most code by https://blog.it-koehler.com/en/Archive/3359
         # Version 1.1 - 10/03/2022 - Added check for Internet connection
+        # Version 1.2 - 14/04/2022 - Module version is now returned 
 
         Param(
                 [Parameter(Mandatory = $true)][String]$ModuleName,
@@ -287,7 +290,7 @@ Function Get-ModuleNewVersion
             {
                 $Message = "Module $ModuleName Local version [$a] is equal or greater than online version [$b], no update requiered"
                 If ($null -ne $ECK){Write-ECKlog -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
-                return $true
+                return $version
             }
         else 
             {
@@ -298,7 +301,7 @@ Function Get-ModuleNewVersion
                         If ($a -eq "0.0"){Install-Module -Name $ModuleName -Force}
                         Else {Update-Module -Name $ModuleName -Force}
                         Set-ItemProperty "HKLM:\SOFTWARE\ECK\DependenciesCheck" -Name $ModuleName -value $((get-date).date)    
-                        return $true
+                        return $psgalleryversion
                     }
                 Else
                     {
@@ -336,4 +339,4 @@ function Format-GitHubURL
         Return $URI
     }
 
-#Initialize-ECKPrereq -Module "Evergreen" -LogPath "c:\Windows\logs\Init-ECK.log" -ContentToLoad "https://github.com/DanysysTeam/PS-SFTA/blob/master/SFTA.ps1"
+Initialize-ECKPrereq -Module "Evergreen" -LogPath "c:\Temp\logs\Init-ECK.log" -ContentToLoad "https://github.com/DanysysTeam/PS-SFTA/blob/master/SFTA.ps1"
