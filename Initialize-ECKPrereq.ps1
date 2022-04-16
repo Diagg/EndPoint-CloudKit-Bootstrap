@@ -57,7 +57,8 @@ Download ans store in "$env:temp\ECK-Content" two scripts from Gist !
 # version 1.8.2 - 30/03/2023 - Added download of ServiceUI.exe 
 # version 1.9.1 - 05/04/2022 - Changed default Log path, use Set-ECKEnvironment
 # version 2.0 - 11/04/2022 - Now fully working under system account
-# version 2.1 - 17/04/2022 - code reworked to be more reliable
+# version 2.1 - 15/04/2022 - code reworked to be more reliable
+# version 2.1.1 - 17/04/2022 - Fixed some bugs !
 
 Function Initialize-ECKPrereq
     {
