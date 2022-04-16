@@ -32,14 +32,14 @@ Try
         If ((get-module 'EndpointCloudKit' -ListAvailable).Version.Build -gt 11)
             {
                 If(-not (get-module 'EndpointCloudKit')){Import-Module 'EndpointCloudKit'}
-                Initialize-ECKPrereq -LogPath $LogDir
+                Initialize-ECKPrereq
             }
         Else
             {
                 $ScriptURI = "https://raw.githubusercontent.com/Diagg/EndPoint-CloudKit-Bootstrap/master/Initialize-ECKPrereq.ps1"
                 $Fileraw = (Invoke-WebRequest -URI $ScriptURI -UseBasicParsing -ErrorAction Stop).content
                 Invoke-Expression ("<#" + $Fileraw) -ErrorAction Stop
-                Initialize-ECKPrereq -LogPath $LogDir
+                Initialize-ECKPrereq
             }
     }
 catch 

@@ -57,6 +57,7 @@ Download ans store in "$env:temp\ECK-Content" two scripts from Gist !
 # version 1.8.2 - 30/03/2023 - Added download of ServiceUI.exe 
 # version 1.9.1 - 05/04/2022 - Changed default Log path, use Set-ECKEnvironment
 # version 2.0 - 11/04/2022 - Now fully working under system account
+# version 2.1 - 17/04/2022 - code reworked to be more reliable
 
 Function Initialize-ECKPrereq
     {
@@ -87,9 +88,13 @@ Function Initialize-ECKPrereq
                 If ((Get-Module 'endpointcloudkit' -ListAvailable).Name -eq 'EndpointCloudkit')
                     {
                         Remove-module 'endpointcloudkit' -ErrorAction SilentlyContinue
-                        Get-Module 'endpointcloudkit' -ListAvailable | Sort-Object Version -Descending  | Select-Object -First 1|Import-module
-                        Set-ECKEnvironment -FullGather -LogPath $LogPath
-                        $ModECK = $true
+                        try 
+                            {
+                                Get-Module 'endpointcloudkit' -ListAvailable | Sort-Object Version -Descending  | Select-Object -First 1|Import-module
+                                New-ECKEnvironment -FullGather -LogPath $LogPath
+                                $ModECK = $true                            
+                            }
+                        catch {$ModECK = $False}
                     } 
                 Else {$ModECK = $False}
          
@@ -154,13 +159,17 @@ Function Initialize-ECKPrereq
                 # Installing modules
                 Foreach ($mod in $Module)
                     {
-                        $ModStatus = Get-ECKNewModuleVersion -modulename $Mod -LogPath $LogPath
+                        $ModStatus = Get-NewModuleVersion -modulename $Mod -LogPath $LogPath
                         If ($ModStatus -ne $false)
                             {
-                                Remove-module $mod -ErrorAction SilentlyContinue
-                                $LoadedMod = Get-Module $mod -ListAvailable | Sort-Object Version -Descending  | Select-Object -First 1|Import-module -passthru
+                                If ($ModStatus.NeedUpdate -eq $true)
+                                    {
+                                        Get-Module $mod -ListAvailable | Sort-Object Version -Descending  | Select-Object -First 1|Import-module
+                                        Write-ECKlog -Message "$Mod module installed version: $($ModStatus.OnlineVersion.version.tostring())"
+                                    }
+                                else 
+                                    {Write-ECKlog -Message "$Mod module installed version: $($ModStatus.LocalVersion.version.tostring())" }    
                                 If ($Mod -eq 'endpointcloudkit' -and $ModECK -ne $true){Set-ECKEnvironment -FullGather -LogPath $LogPath ; $ModECK = $true} 
-                                Write-ECKlog -Message "$Mod module installed version: $($LoadedMod.version.tostring())"
                             }
                         Else
                             {Write-ECKlog -Message "[Error] Unable to install Module $Mod, Aborting!!!" ; Exit 1}
@@ -234,7 +243,7 @@ Function Initialize-ECKPrereq
     }
 
 
-Function Get-ECKNewModuleVersion
+Function Get-NewModuleVersion
     {
         # Most code by https://blog.it-koehler.com/en/Archive/3359
         # Version 1.1 - 10/03/2022 - Added check for Internet connection
@@ -290,7 +299,7 @@ Function Get-ECKNewModuleVersion
             {
                 $Message = "Module $ModuleName Local version [$a] is equal or greater than online version [$b], no update requiered"
                 If ($null -ne $ECK){Write-ECKlog -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
-                return $version
+                return [PSCustomObject]@{NeedUpdate = $False ; ModuleName = $ModuleName ; LocalVersion = $version ; OnlineVersion = $psgalleryversion}
             }
         else 
             {
@@ -298,10 +307,16 @@ Function Get-ECKNewModuleVersion
                     {
                         $Message =  "Module $ModuleName Local version [$a] is lower than online version [$b], Updating Module !"
                         If ($null -ne $ECK){Write-ECKlog -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
-                        If ($a -eq "0.0"){Install-Module -Name $ModuleName -Force}
-                        Else {Update-Module -Name $ModuleName -Force}
+                        If ($a -eq "0.0")
+                            {Install-Module -Name $ModuleName -Force}
+                        Else 
+                            {
+                                Remove-module -Name $ModuleName -ErrorAction SilentlyContinue -Force
+                                Uninstall-Module -Name $ModuleName -AllVersions -Force -Confirm:$false -ErrorAction SilentlyContinue
+                                Install-Module -Name $ModuleName -Force
+                            }
                         Set-ItemProperty "HKLM:\SOFTWARE\ECK\DependenciesCheck" -Name $ModuleName -value $((get-date).date)    
-                        return $psgalleryversion
+                        return [PSCustomObject]@{NeedUpdate = $True ; ModuleName = $ModuleName ; LocalVersion = $version ; OnlineVersion = $psgalleryversion}
                     }
                 Else
                     {
