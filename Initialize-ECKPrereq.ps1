@@ -58,7 +58,7 @@ Download ans store in "$env:temp\ECK-Content" two scripts from Gist !
 # version 1.9.1 - 05/04/2022 - Changed default Log path, use Set-ECKEnvironment
 # version 2.0 - 11/04/2022 - Now fully working under system account
 # version 2.1 - 15/04/2022 - code reworked to be more reliable
-# version 2.1.2 - 18/04/2022 - Fixed some bugs !
+# version 2.1.3 - 18/04/2022 - Fixed some bugs !
 
 Function Initialize-ECKPrereq
     {
@@ -358,4 +358,4 @@ function Format-GitHubURL
         Return $URI
     }
 
-Initialize-ECKPrereq -Module "Evergreen" -LogPath "c:\Temp\logs\Init-ECK.log" -ContentToLoad "https://github.com/DanysysTeam/PS-SFTA/blob/master/SFTA.ps1"
+#Initialize-ECKPrereq -Module "Evergreen" -LogPath "c:\Temp\logs\Init-ECK.log" -ContentToLoad "https://github.com/DanysysTeam/PS-SFTA/blob/master/SFTA.ps1"
