@@ -169,7 +169,7 @@ Function Initialize-ECKPrereq
                                         Write-ECKlog -Message "$Mod module installed version: $($ModStatus.OnlineVersion)"
                                     }
                                 else 
-                                    {Write-ECKlog -Message "$Mod module installed version: $($ModStatus.LocalVersion.version.tostring())" }    
+                                    {Write-ECKlog -Message "$Mod module installed version: $($ModStatus.LocalVersion)" }    
                                 If ($Mod -eq 'endpointcloudkit' -and $ModECK -ne $true){New-ECKEnvironment -FullGather -LogPath $LogPath ; $ModECK = $true} 
                             }
                         Else
