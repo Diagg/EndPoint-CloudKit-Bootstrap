@@ -59,6 +59,7 @@ Download ans store in "$env:temp\ECK-Content" two scripts from Gist !
 # version 2.0 - 11/04/2022 - Now fully working under system account
 # version 2.1 - 15/04/2022 - code reworked to be more reliable
 # version 2.1.5 - 18/04/2022 - Fixed a hell lots of bugs !
+# version 2.1.6 - 19/04/2022 - Fixed even more bugs !
 
 Function Initialize-ECKPrereq
     {
