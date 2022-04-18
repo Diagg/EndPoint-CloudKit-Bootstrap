@@ -58,7 +58,7 @@ Download ans store in "$env:temp\ECK-Content" two scripts from Gist !
 # version 1.9.1 - 05/04/2022 - Changed default Log path, use Set-ECKEnvironment
 # version 2.0 - 11/04/2022 - Now fully working under system account
 # version 2.1 - 15/04/2022 - code reworked to be more reliable
-# version 2.1.4 - 18/04/2022 - Fixed some bugs !
+# version 2.1.5 - 18/04/2022 - Fixed a hell lots of bugs !
 
 Function Initialize-ECKPrereq
     {
@@ -163,17 +163,19 @@ Function Initialize-ECKPrereq
                         $ModStatus = Get-NewModuleVersion -modulename $Mod -LogPath $LogPath
                         If ($ModStatus -ne $false)
                             {
-                                If ($ModStatus.NeedUpdate -eq $true)
-                                    {
-                                        Get-Module $mod -ListAvailable | Sort-Object Version -Descending  | Select-Object -First 1|Import-module
-                                        Write-ECKlog -Message "$Mod module installed version: $($ModStatus.OnlineVersion)"
-                                    }
-                                else 
-                                    {Write-ECKlog -Message "$Mod module installed version: $($ModStatus.LocalVersion)" }    
+                                $ImportedMod = Get-Module $mod -ListAvailable | Sort-Object Version -Descending  | Select-Object -First 1|Import-module -PassThru
+                                
+                                $Message = "$Mod module installed version: $($ImportedMod.Version.ToString())"
+                                If ($ModECK -eq $true){Write-ECKlog -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
+
                                 If ($Mod -eq 'endpointcloudkit' -and $ModECK -ne $true){New-ECKEnvironment -FullGather -LogPath $LogPath ; $ModECK = $true} 
                             }
                         Else
-                            {Write-ECKlog -Message "[Error] Unable to install Module $Mod, Aborting!!!" ; Exit 1}
+                            {
+                                $Message = "[Error] Unable to install Module $Mod, Aborting!!!"
+                                If ($ModECK -eq $true){Write-ECKlog -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
+                                Exit 1
+                            }
                     }
 
 
@@ -256,9 +258,20 @@ Function Get-NewModuleVersion
                 [String]$LogPath
             )
 
+        # Check Log Method
+        if(Test-Path function:write-ECKLog){$ModECK = $true} Else {$ModECK = $false}
+
         # Check if we need to update today
         $lastEval = (Get-ItemProperty "HKLM:\SOFTWARE\ECK\DependenciesCheck" -name $ModuleName -ErrorAction SilentlyContinue).$ModuleName
-        If (![String]::IsNullOrWhiteSpace($lastEval)){If ((Get-date -Date $LastEval) -eq ((get-date).date)){return [PSCustomObject]@{NeedUpdate = $False ; ModuleName = $ModuleName}}}
+        If (![String]::IsNullOrWhiteSpace($lastEval))
+            {
+                If ((Get-date -Date $LastEval) -eq ((get-date).date))
+                    {
+                        $Message = "[Warning] Module $ModuleName, was alreqdy downloaded today, to save bandwidth, now new download will occurs until tomorrow !"
+                        If ($ModECK -eq $true){Write-ECKlog -Message $Message -type 2} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}                       
+                        return [PSCustomObject]@{NeedUpdate = $False ; ModuleName = $ModuleName}
+                    }
+            }
         
 
         #getting version of installed module
@@ -279,12 +292,12 @@ Function Get-NewModuleVersion
                 If (-not ($null -eq $version)) 
                     {
                         $Message = "[Warning] No internet connection available, continuing with local version $version of $ModuleName"
-                        If ($null -ne $ECK){Write-ECKlog -Message $Message -type 2} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
+                        If ($ModECK -eq $true){Write-ECKlog -Message $Message -type 2} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
                     }
                 Else
                     {
                         $Message = "[ERROR] No internet connection available, unable to load module $ModuleName, Aborting !!!"
-                        If ($null -ne $ECK){Write-ECKlog -Message $Message -type 3} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
+                        If ($ModECK -eq $true){Write-ECKlog -Message $Message -type 3} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
                         Exit 1
                     }  
             }
@@ -302,7 +315,7 @@ Function Get-NewModuleVersion
         if ([version]"$a" -ge [version]"$b") 
             {
                 $Message = "Module $ModuleName Local version [$a] is equal or greater than online version [$b], no update requiered"
-                If ($null -ne $ECK){Write-ECKlog -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
+                If ($ModECK -eq $true){Write-ECKlog -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
                 return [PSCustomObject]@{NeedUpdate = $False ; ModuleName = $ModuleName ; LocalVersion = $version ; OnlineVersion = $psgalleryversion}
             }
         else 
@@ -310,7 +323,7 @@ Function Get-NewModuleVersion
                 If ($b -ne "0.0")
                     {
                         $Message =  "Module $ModuleName Local version [$a] is lower than online version [$b], Updating Module !"
-                        If ($null -ne $ECK){Write-ECKlog -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
+                        If ($ModECK -eq $true){Write-ECKlog -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
                         If ($a -eq "0.0")
                             {Install-Module -Name $ModuleName -Force}
                         Else 
@@ -325,7 +338,7 @@ Function Get-NewModuleVersion
                 Else
                     {
                         $message = "[ERROR] Module $ModuleName not found online, unable to download, aborting!"
-                        If ($null -ne $ECK){Write-ECKlog -Message $Message -level 3} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
+                        If ($ModECK -eq $true){Write-ECKlog -Message $Message -level 3} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
                         return $false
                     }
             }
