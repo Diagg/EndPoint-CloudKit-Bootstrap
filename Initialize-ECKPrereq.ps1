@@ -58,7 +58,7 @@ Download ans store in "$env:temp\ECK-Content" two scripts from Gist !
 # version 1.9.1 - 05/04/2022 - Changed default Log path, use Set-ECKEnvironment
 # version 2.0 - 11/04/2022 - Now fully working under system account
 # version 2.1 - 15/04/2022 - code reworked to be more reliable
-# version 2.1.3 - 18/04/2022 - Fixed some bugs !
+# version 2.1.4 - 18/04/2022 - Fixed some bugs !
 
 Function Initialize-ECKPrereq
     {
