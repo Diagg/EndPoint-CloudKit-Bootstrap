@@ -60,6 +60,7 @@ Download ans store in "$env:temp\ECK-Content" two scripts from Gist !
 # version 2.1 - 15/04/2022 - code reworked to be more reliable
 # version 2.1.5 - 18/04/2022 - Fixed a hell lots of bugs !
 # version 2.1.6 - 19/04/2022 - Fixed even more bugs !
+# version 2.1.7 - 19/04/2022 - fixed a bugs in module scope
 
 Function Initialize-ECKPrereq
     {
@@ -165,7 +166,7 @@ Function Initialize-ECKPrereq
                         If ($ModStatus -ne $false)
                             {
                                 Remove-module $Mod -force -ErrorAction SilentlyContinue
-                                $ImportedMod = Get-Module $mod -ListAvailable | Sort-Object Version -Descending  | Select-Object -First 1|Import-module -PassThru -Force
+                                $ImportedMod = Get-Module $mod -ListAvailable | Sort-Object Version -Descending  | Select-Object -First 1|Import-module -Force -Global -PassThru
                                 
                                 $Message = "$Mod module installed version: $($ImportedMod.Version.ToString())"
                                 If ($ModECK -eq $true){Write-ECKlog -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
