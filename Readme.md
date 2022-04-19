@@ -31,8 +31,9 @@ Try
     {
         If ((get-module 'EndpointCloudKit' -ListAvailable).Version.Build -gt 11)
             {
-                If(-not (get-module 'EndpointCloudKit')){Import-Module 'EndpointCloudKit'}
-                Initialize-ECKPrereq
+                If(-not (get-module 'EndpointCloudKit')){$ECKMod | Sort-Object Version -Descending  | Select-Object -First 1|Import-module -Force}
+                New-ECKEnvironment
+                Initialize-ECKPrereq -LogPath $LogDir
             }
         Else
             {
