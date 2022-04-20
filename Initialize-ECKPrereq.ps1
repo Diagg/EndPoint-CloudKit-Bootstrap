@@ -61,6 +61,7 @@ Download ans store in "$env:temp\ECK-Content" two scripts from Gist !
 # version 2.1.5 - 18/04/2022 - Fixed a hell lots of bugs !
 # version 2.1.6 - 19/04/2022 - Fixed even more bugs !
 # version 2.1.7 - 19/04/2022 - fixed a bugs in module scope
+# version 2.1.8 - 20/04/2022 - fixed a bugs  in Get-NewModuleVersion Function
 
 Function Initialize-ECKPrereq
     {
@@ -254,7 +255,8 @@ Function Get-NewModuleVersion
         # Most code by https://blog.it-koehler.com/en/Archive/3359
         # Version 1.1 - 10/03/2022 - Added check for Internet connection
         # Version 1.2 - 14/04/2022 - Module version is now returned
-        # Version 1.3 - 16/04/2022 - returned value is now an object 
+        # Version 1.3 - 16/04/2022 - returned value is now an object
+        # Version 1.4 - 20/04/2022 - Fixed a bug where $lastEval was not from the correct type 
 
         Param(
                 [Parameter(Mandatory = $true)][String]$ModuleName,
@@ -265,7 +267,7 @@ Function Get-NewModuleVersion
         if(Test-Path function:write-ECKLog){$ModECK = $true} Else {$ModECK = $false}
 
         # Check if we need to update today
-        $lastEval = (Get-ItemProperty "HKLM:\SOFTWARE\ECK\DependenciesCheck" -name $ModuleName -ErrorAction SilentlyContinue).$ModuleName
+        [DateTime]$lastEval = (Get-ItemProperty "HKLM:\SOFTWARE\ECK\DependenciesCheck" -name $ModuleName -ErrorAction SilentlyContinue).$ModuleName
         If (![String]::IsNullOrWhiteSpace($lastEval))
             {
                 If ((Get-date -Date $LastEval) -eq ((get-date).date))
