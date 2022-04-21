@@ -47,21 +47,22 @@ Download ans store in "$env:temp\ECK-Content" two scripts from Gist !
 # Auto Update: NO
 # By Diagg/OSD-Couture.com
 # 
-# Version 1.1 - 17/03/2022 - Added check for Internt connection, Nuget.exe is now an option.
-# Version 1.2 - 18/03/2022 - Added support for loading scripts in bulk, Added support for Importing (executing) scripts in bulk. 
-# Version 1.3 - 20/03/2022 - Changed default logging to file.
-# Version 1.4 - 21/03/2022 - Fixed a lot of bugs !
-# Version 1.5 - 22/03/2022 - Fixed a bug in Format-GitHubURL that produced non working URI
-# Version 1.6.1 - 22/03/2022 - Added Policy to block more that one update per day for modules.
-# version 1.7 - 24/03/2023 - Added download of Hiddenw.exe 
-# version 1.8.2 - 30/03/2023 - Added download of ServiceUI.exe 
-# version 1.9.1 - 05/04/2022 - Changed default Log path, use Set-ECKEnvironment
-# version 2.0 - 11/04/2022 - Now fully working under system account
-# version 2.1 - 15/04/2022 - code reworked to be more reliable
-# version 2.1.5 - 18/04/2022 - Fixed a hell lots of bugs !
-# version 2.1.6 - 19/04/2022 - Fixed even more bugs !
-# version 2.1.7 - 19/04/2022 - fixed a bugs in module scope
-# version 2.1.8 - 20/04/2022 - fixed a bugs  in Get-NewModuleVersion Function
+# Script Version 1.1 - 17/03/2022 - Added check for Internt connection, Nuget.exe is now an option.
+# Script Version 1.2 - 18/03/2022 - Added support for loading scripts in bulk, Added support for Importing (executing) scripts in bulk. 
+# Script Version 1.3 - 20/03/2022 - Changed default logging to file.
+# Script Version 1.4 - 21/03/2022 - Fixed a lot of bugs !
+# Script Version 1.5 - 22/03/2022 - Fixed a bug in Format-GitHubURL that produced non working URI
+# Script Version 1.6.1 - 22/03/2022 - Added Policy to block more that one update per day for modules.
+# Script Version 1.7 - 24/03/2023 - Added download of Hiddenw.exe 
+# Script Version 1.8.2 - 30/03/2023 - Added download of ServiceUI.exe 
+# Script Version 1.9.1 - 05/04/2022 - Changed default Log path, use Set-ECKEnvironment
+# Script Version 2.0 - 11/04/2022 - Now fully working under system account
+# Script Version 2.1 - 15/04/2022 - code reworked to be more reliable
+# Script Version 2.1.5 - 18/04/2022 - Fixed a hell lots of bugs !
+# Script Version 2.1.6 - 19/04/2022 - Fixed even more bugs !
+# Script Version 2.1.7 - 19/04/2022 - fixed a bugs in module scope
+# Script Version 2.1.8 - 20/04/2022 - fixed a bugs  in Get-NewModuleVersion Function
+# Script Version 2.1.9 - 21/04/2022 - fixed another bugs  in Get-NewModuleVersion Function
 
 Function Initialize-ECKPrereq
     {
@@ -73,6 +74,8 @@ Function Initialize-ECKPrereq
                 [Parameter(ParameterSetName="Contentload")][String]$ContentPath = "$env:temp\ECK-Content",  # Path where script are downloaded
                 [String[]]$ScriptToImport                                                                   # download scripts from Github and import them in the current Powershell session.
             )
+
+        $ScriptInvocation = $MyInvocation.MyCommand
 
         ## Create Folders and registry keys
         If (-not (Test-Path $ContentPath)){New-Item $ContentPath -ItemType Directory -Force|Out-Null}
@@ -257,6 +260,7 @@ Function Get-NewModuleVersion
         # Version 1.2 - 14/04/2022 - Module version is now returned
         # Version 1.3 - 16/04/2022 - returned value is now an object
         # Version 1.4 - 20/04/2022 - Fixed a bug where $lastEval was not from the correct type 
+        # Version 1.5 - 21/04/2022 - Added checks if $Lasteval doesn't retun anything ! 
 
         Param(
                 [Parameter(Mandatory = $true)][String]$ModuleName,
@@ -267,7 +271,8 @@ Function Get-NewModuleVersion
         if(Test-Path function:write-ECKLog){$ModECK = $true} Else {$ModECK = $false}
 
         # Check if we need to update today
-        [DateTime]$lastEval = (Get-ItemProperty "HKLM:\SOFTWARE\ECK\DependenciesCheck" -name $ModuleName -ErrorAction SilentlyContinue).$ModuleName
+        Try{[DateTime]$lastEval = (Get-ItemProperty "HKLM:\SOFTWARE\ECK\DependenciesCheck" -name $ModuleName -ErrorAction SilentlyContinue).$ModuleName}
+        Catch{$lastEval = $Null}
         If (![String]::IsNullOrWhiteSpace($lastEval))
             {
                 If ((Get-date -Date $LastEval) -eq ((get-date).date))
