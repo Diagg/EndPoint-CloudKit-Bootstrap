@@ -63,24 +63,31 @@ Download ans store in "$env:temp\ECK-Content" two scripts from Gist !
 # Script Version 2.1.7 - 19/04/2022 - fixed a bugs in module scope
 # Script Version 2.1.8 - 20/04/2022 - fixed a bugs  in Get-NewModuleVersion Function
 # Script Version 2.1.9 - 21/04/2022 - fixed another bugs  in Get-NewModuleVersion Function
+# Script Version 2.2 - 28/04/2022 - Changed $ContentPath location and behavior
 
 Function Initialize-ECKPrereq
     {
         Param (
-                [String[]]$Module,                                                                          # List of module to import separated by coma
-                [string]$LogPath = "C:\Windows\Logs\ECK\ECK-Init.log",                                      # Defaut log file path
-                [bool]$NugetDevTool = $false,                                                               # Allow installation of nuget.exe, 
-                [Parameter(ParameterSetName="Contentload")][String[]]$ContentToLoad,                        # Download scripts form Github and place them in $ContentPath folder
-                [Parameter(ParameterSetName="Contentload")][String]$ContentPath = "$env:temp\ECK-Content",  # Path where script are downloaded
-                [String[]]$ScriptToImport                                                                   # download scripts from Github and import them in the current Powershell session.
+                [String[]]$Module,                                                                              # List of module to import separated by coma
+                [string]$LogPath = "C:\Windows\Logs\ECK\ECK-Init.log",                                          # Defaut log file path
+                [bool]$NugetDevTool = $false,                                                                   # Allow installation of nuget.exe, 
+                [Parameter(ParameterSetName="Contentload")][String[]]$ContentToLoad,                            # Download scripts form Github and place them in $ContentPath folder
+                [Parameter(ParameterSetName="Contentload")][String]$ContentPath = 'C:\ProgramData\ECK-Content', # Path where script are downloaded
+                [String[]]$ScriptToImport                                                                       # download scripts from Github and import them in the current Powershell session.
             )
 
         $ScriptInvocation = $MyInvocation.MyCommand
 
         ## Create Folders and registry keys
-        If (-not (Test-Path $ContentPath)){New-Item $ContentPath -ItemType Directory -Force|Out-Null}
+        If (-not (Test-Path $ContentPath)){New-Item $ContentPath -ItemType Directory -Force|Out-Null}        
         If (-not (Test-Path $(Split-Path $LogPath ))){New-Item $(Split-Path $LogPath) -ItemType Directory -Force|Out-Null}
         If (-not (test-path "HKLM:\SOFTWARE\ECK\DependenciesCheck")){New-item -Path "HKLM:\SOFTWARE\ECK\DependenciesCheck" -Force|Out-Null} 
+
+        ## Allow read and execute for standard users on $ContentPath folder
+        $Acl = Get-ACL $script:ContentPath
+        $AccessRule= New-Object System.Security.AccessControl.FileSystemAccessRule($((Get-LocalGroup -SID S-1-5-32-545).Name),"ReadAndExecute","ContainerInherit,Objectinherit","none","Allow")
+        $Acl.AddAccessRule($AccessRule)
+        Set-Acl $script:ContentPath $Acl -ErrorAction SilentlyContinue
 
         ## Set Tls to 1.2
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
@@ -98,7 +105,7 @@ Function Initialize-ECKPrereq
                         try 
                             {
                                 Get-Module 'endpointcloudkit-Alpha' -ListAvailable | Sort-Object Version -Descending  | Select-Object -First 1|Import-module
-                                New-ECKEnvironment -FullGather -LogPath $LogPath
+                                New-ECKEnvironment -LogPath $LogPath -ContentPath $ContentPath
                                 $ModECK = $true                            
                             }
                         catch {$ModECK = $False}
@@ -175,7 +182,7 @@ Function Initialize-ECKPrereq
                                 $Message = "$Mod module installed version: $($ImportedMod.Version.ToString())"
                                 If ($ModECK -eq $true){Write-ECKlog -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
 
-                                If ($Mod -eq 'endpointcloudkit-Alpha'){New-ECKEnvironment -FullGather -LogPath $LogPath ; $ModECK = $true} 
+                                If ($Mod -eq 'endpointcloudkit-Alpha'){New-ECKEnvironment -LogPath $LogPath -ContentPath $ContentPath ; $ModECK = $true} 
                             }
                         Else
                             {
