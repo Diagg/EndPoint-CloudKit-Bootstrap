@@ -84,10 +84,13 @@ Function Initialize-ECKPrereq
         If (-not (test-path "HKLM:\SOFTWARE\ECK\DependenciesCheck")){New-item -Path "HKLM:\SOFTWARE\ECK\DependenciesCheck" -Force|Out-Null} 
 
         ## Allow read and execute for standard users on $ContentPath folder
-        $Acl = Get-ACL $script:ContentPath
-        $AccessRule= New-Object System.Security.AccessControl.FileSystemAccessRule($((Get-LocalGroup -SID S-1-5-32-545).Name),"ReadAndExecute","ContainerInherit,Objectinherit","none","Allow")
-        $Acl.AddAccessRule($AccessRule)
-        Set-Acl $script:ContentPath $Acl -ErrorAction SilentlyContinue
+        $Acl = Get-ACL $ContentPath
+        If (($Acl.Access|Where-Object {$_.IdentityReference -eq "BUILTIN\Users" -and $_.AccessControlType -eq "Allow" -and $_.FileSystemRights -like "*ReadAndExecute*"}).count -lt 1)
+            {
+                $AccessRule= New-Object System.Security.AccessControl.FileSystemAccessRule($((Get-LocalGroup -SID S-1-5-32-545).Name),"ReadAndExecute","ContainerInherit,Objectinherit","none","Allow")
+                $Acl.AddAccessRule($AccessRule)
+                Set-Acl $script:ContentPath $Acl
+            }
 
         ## Set Tls to 1.2
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
