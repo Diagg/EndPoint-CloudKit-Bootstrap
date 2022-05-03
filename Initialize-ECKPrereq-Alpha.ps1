@@ -65,7 +65,7 @@ Download ans store in "$env:temp\ECK-Content" two scripts from Gist !
 # Script Version 2.1.9 - 21/04/2022 - fixed another bugs  in Get-NewModuleVersion Function
 # Script Version 2.2 - 28/04/2022 - Changed $ContentPath location and behavior
 # Script Version 2.2.1 - 03/05/2022 - fixed a bug in $ContentPath scope
-# Script Version 2.2.2 - 03/05/2022 - Better error Handeling in Get-NewModuleVersion, removed MyInvocation
+# Script Version 2.2.2 - 03/05/2022 - Better error Handeling in Get-NewModuleVersion, removed MyInvocation, pupdate Powershellget if needed
 
 Function Initialize-ECKPrereq
     {
@@ -163,21 +163,22 @@ Function Initialize-ECKPrereq
 
                 ## Import Powershell Get
                 If (-not (Get-Module PowershellGet)) {Get-Module 'PowershellGet' -ListAvailable | Sort-Object Version -Descending  | Select-Object -First 1|Import-module}
-                $Message = "PowershellGet module installed version: $(((Get-Module PowerShellGet|Sort-Object|Select-Object -First 1).version.tostring()))"
+                [Version]$PsGetVersion = $(((Get-Module PowerShellGet|Sort-Object|Select-Object -First 1).version.tostring()))
+                $Message = "PowershellGet module installed version: $PsGetVersion"
                 If ($ModECK -eq $true){Write-ECKlog -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
 
                 ## Trust PSGallery
                 If ((Get-PSRepository -Name "PsGallery").InstallationPolicy -ne "Trusted"){Set-PSRepository -Name 'PSGallery' -InstallationPolicy 'Trusted' -SourceLocation 'https://www.powershellgallery.com/api/v2'} 
 
-                # Installing Endpoint Cloud Kit
-                If ('endpointcloudkit-Alpha' -notin $Module){$Module += "endpointcloudkit-Alpha"}
-                $Module = $Module|Sort-Object -Descending
+                # Add mandatory modules
+                If ('endpointcloudkit-Alpha' -notin $Module){$Module += "endpointcloudkit-Alpha" ; $Module = $Module|Sort-Object -Descending}
+                If ($PsGetVersion -lt [version]2.2.5 -and 'PowershellGet' -notin $Module){$Module += "PowershellGet" ; $Module = $Module|Sort-Object -Descending}
 
                 # Installing modules
                 Foreach ($mod in $Module)
                     {
                         $ModStatus = Get-NewModuleVersion -modulename $Mod -LogPath $LogPath
-                        If ($ModStatus -ne $false)
+                        If ($ModStatus.NeedUpdate -eq $True)
                             {
                                 Remove-module $Mod -force -ErrorAction SilentlyContinue
                                 $ImportedMod = Get-Module $mod -ListAvailable | Sort-Object Version -Descending  | Select-Object -First 1|Import-module -Force -Global -PassThru
@@ -186,6 +187,11 @@ Function Initialize-ECKPrereq
                                 If ($ModECK -eq $true){Write-ECKlog -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
 
                                 If ($Mod -eq 'endpointcloudkit-Alpha'){New-ECKEnvironment -LogPath $LogPath -ContentPath $ContentPath ; $ModECK = $true} 
+                            }
+                        ElseIf ($ModStatus.NeedUpdate -eq $false)
+                            {
+                                $Message = "Module $Mod aready up to date !"
+                                If ($ModECK -eq $true){Write-ECKlog -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
                             }
                         Else
                             {
@@ -347,13 +353,27 @@ Function Get-NewModuleVersion
                         If ($ModECK -eq $true){Write-ECKlog -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
                         If ($a -eq "0.0")
                             {
-                                Try {Install-Module -Name $ModuleName -Force -ErrorAction SilentlyContinue}
+                                Try 
+                                    {
+                                        Install-Module -Name $ModuleName -Force -ErrorAction Stop
+                                        Set-ItemProperty "HKLM:\SOFTWARE\ECK\DependenciesCheck" -Name $ModuleName -value $((get-date).date)
+                                    }
                                 Catch
                                     {
                                         If ($_.FullyQualifiedErrorId -like "*CommandAlreadyAvailable*")
                                             {
-                                                $Message =  "Commandlet of Module $ModuleName already loaded using... ...another module, skipping import !"
-                                                If ($ModECK -eq $true){Write-ECKlog -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
+                                                If ($ModuleName -like "*endpointcloudkit-Alpha*")
+                                                    {
+                                                        Install-Module -Name $ModuleName -Force -AllowClobber
+                                                        $Message =  "Overwriting another module to allow import of $ModuleName !"
+                                                        If ($ModECK -eq $true){Write-ECKlog -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
+                                                    }
+                                                Else
+                                                    {
+                                                
+                                                        $Message =  "Commandlet of Module $ModuleName already loaded using... ...another module, skipping import !"
+                                                        If ($ModECK -eq $true){Write-ECKlog -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
+                                                    }
                                             }
                                         else 
                                             {
@@ -375,13 +395,27 @@ Function Get-NewModuleVersion
                             {
                                 Remove-module -Name $ModuleName -ErrorAction SilentlyContinue -Force
                                 Uninstall-Module -Name $ModuleName -AllVersions -Force -Confirm:$false -ErrorAction SilentlyContinue
-                                Try {Install-Module -Name $ModuleName -Force -ErrorAction SilentlyContinue}
+                                Try 
+                                    {
+                                        Install-Module -Name $ModuleName -Force -ErrorAction Stop
+                                        Set-ItemProperty "HKLM:\SOFTWARE\ECK\DependenciesCheck" -Name $ModuleName -value $((get-date).date)
+                                    }
                                 Catch
                                     {
                                         If ($_.FullyQualifiedErrorId -like "*CommandAlreadyAvailable*")
                                             {
-                                                $Message =  "Commandlet of Module $ModuleName already loaded using... ...another module, skipping import !"
-                                                If ($ModECK -eq $true){Write-ECKlog -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
+                                                If ($ModuleName -like "*endpointcloudkit-Alpha*")
+                                                    {
+                                                        Install-Module -Name $ModuleName -Force -AllowClobber
+                                                        $Message =  "Overwriting another module to allow import of $ModuleName !"
+                                                        If ($ModECK -eq $true){Write-ECKlog -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
+                                                    }
+                                                Else
+                                                    {
+                                                
+                                                        $Message =  "Commandlet of Module $ModuleName already loaded using... ...another module, skipping import !"
+                                                        If ($ModECK -eq $true){Write-ECKlog -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
+                                                    }
                                             }
                                         else 
                                             {
@@ -399,14 +433,14 @@ Function Get-NewModuleVersion
                                             }
                                     }
                             }
-                        Set-ItemProperty "HKLM:\SOFTWARE\ECK\DependenciesCheck" -Name $ModuleName -value $((get-date).date)    
+    
                         return [PSCustomObject]@{NeedUpdate = $True ; ModuleName = $ModuleName ; LocalVersion = $version ; OnlineVersion = $psgalleryversion}
                     }
                 Else
                     {
                         $message = "[ERROR] Module $ModuleName not found online, unable to download, aborting!"
                         If ($ModECK -eq $true){Write-ECKlog -Message $Message -level 3} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
-                        return $false
+                        return [PSCustomObject]@{NeedUpdate = $Null ; ModuleName = $ModuleName ; LocalVersion = 0 ; OnlineVersion = 0}
                     }
             }
     }
