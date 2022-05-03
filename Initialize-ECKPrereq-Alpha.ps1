@@ -64,6 +64,7 @@ Download ans store in "$env:temp\ECK-Content" two scripts from Gist !
 # Script Version 2.1.8 - 20/04/2022 - fixed a bugs  in Get-NewModuleVersion Function
 # Script Version 2.1.9 - 21/04/2022 - fixed another bugs  in Get-NewModuleVersion Function
 # Script Version 2.2 - 28/04/2022 - Changed $ContentPath location and behavior
+# Script Version 2.2.1 - 03/05/2022 - fixed a bug in $ContentPath scope
 
 Function Initialize-ECKPrereq
     {
@@ -89,7 +90,7 @@ Function Initialize-ECKPrereq
             {
                 $AccessRule= New-Object System.Security.AccessControl.FileSystemAccessRule($((Get-LocalGroup -SID S-1-5-32-545).Name),"ReadAndExecute","ContainerInherit,Objectinherit","none","Allow")
                 $Acl.AddAccessRule($AccessRule)
-                Set-Acl $script:ContentPath $Acl
+                Set-Acl $ContentPath $Acl
             }
 
         ## Set Tls to 1.2
