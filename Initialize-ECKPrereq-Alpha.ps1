@@ -343,7 +343,7 @@ Function Get-NewModuleVersion
 
         if ([version]"$a" -ge [version]"$b")
             {
-                If (Get-Module -Name $ModuleName -lt $ModuleName)
+                If ((Get-Module -Name $ModuleName).version -lt [version]"$a")
                     {$Message = "Module $ModuleName Local version [$a] is equal or greater than online version [$b], no update requiered, but module in current session is not the highest and needs to be refreshed !" ; $Iret = $True}
                 else 
                     {$Message = "Module $ModuleName Local version [$a] is equal or greater than online version [$b], no update requiered" ; $Iret = $False}
