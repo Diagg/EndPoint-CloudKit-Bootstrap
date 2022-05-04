@@ -67,6 +67,7 @@ Download ans store in "$env:temp\ECK-Content" two scripts from Gist !
 # Script Version 2.2.1 - 03/05/2022 - fixed a bug in $ContentPath scope
 # Script Version 2.2.2 - 03/05/2022 - Changed $ContentPath location and behavior, removed MyInvocation
 # Script Version 2.2.3 - 03/05/2022 - update Powershellget if needed
+# Script Version 2.2.4 - 04/05/2022 - Bug Fix
 
 Function Initialize-ECKPrereq
     {
@@ -86,7 +87,7 @@ Function Initialize-ECKPrereq
 
         ## Allow read and execute for standard users on $ContentPath folder
         $Acl = Get-ACL $ContentPath
-        If (($Acl.Access|Where-Object {$_.IdentityReference -eq "BUILTIN\Users" -and $_.AccessControlType -eq "Allow" -and $_.FileSystemRights -like "*ReadAndExecute*"}).count -lt 1)
+        If (($Acl.Access|Where-Object {$_.IdentityReference -eq "BUILTIN\$((Get-LocalGroup -SID S-1-5-32-545).Name)" -and $_.AccessControlType -eq "Allow" -and $_.FileSystemRights -like "*ReadAndExecute*"}).count -lt 1)
             {
                 $AccessRule= New-Object System.Security.AccessControl.FileSystemAccessRule($((Get-LocalGroup -SID S-1-5-32-545).Name),"ReadAndExecute","ContainerInherit,Objectinherit","none","Allow")
                 $Acl.AddAccessRule($AccessRule)
@@ -173,7 +174,7 @@ Function Initialize-ECKPrereq
 
                 # Add mandatory modules
                 If ('endpointcloudkit-Alpha' -notin $Module){$Module += "endpointcloudkit-Alpha" ; $Module = $Module|Sort-Object -Descending}
-                If ($PsGetVersion -lt [version]2.2.5 -and 'PowershellGet' -notin $Module){$Module += "PowershellGet" ; $Module = $Module|Sort-Object -Descending}
+                If ($PsGetVersion -lt [version]"2.2.5" -and 'PowershellGet' -notin $Module){$Module += "PowershellGet" ; $Module = $Module|Sort-Object -Descending}
 
                 # Installing modules
                 Foreach ($mod in $Module)
@@ -342,9 +343,13 @@ Function Get-NewModuleVersion
 
         if ([version]"$a" -ge [version]"$b")
             {
-                $Message = "Module $ModuleName Local version [$a] is equal or greater than online version [$b], no update requiered"
+                If (Get-Module -Name $ModuleName -lt $ModuleName)
+                    {$Message = "Module $ModuleName Local version [$a] is equal or greater than online version [$b], no update requiered, but module in current session is not the highest and needs to be refreshed !" ; $Iret = $True}
+                else 
+                    {$Message = "Module $ModuleName Local version [$a] is equal or greater than online version [$b], no update requiered" ; $Iret = $False}
+                
                 If ($ModECK -eq $true){Write-ECKlog -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
-                return [PSCustomObject]@{NeedUpdate = $False ; ModuleName = $ModuleName ; LocalVersion = $version ; OnlineVersion = $psgalleryversion}
+                return [PSCustomObject]@{NeedUpdate = $Iret ; ModuleName = $ModuleName ; LocalVersion = $version ; OnlineVersion = $psgalleryversion}
             }
         else
             {
@@ -352,87 +357,49 @@ Function Get-NewModuleVersion
                     {
                         $Message =  "Module $ModuleName Local version [$a] is lower than online version [$b], Updating Module !"
                         If ($ModECK -eq $true){Write-ECKlog -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
-                        If ($a -eq "0.0")
-                            {
-                                Try 
-                                    {
-                                        Install-Module -Name $ModuleName -Force -ErrorAction Stop
-                                        Set-ItemProperty "HKLM:\SOFTWARE\ECK\DependenciesCheck" -Name $ModuleName -value $((get-date).date)
-                                    }
-                                Catch
-                                    {
-                                        If ($_.FullyQualifiedErrorId -like "*CommandAlreadyAvailable*")
-                                            {
-                                                If ($ModuleName -like "*endpointcloudkit*")
-                                                    {
-                                                        Install-Module -Name $ModuleName -Force -AllowClobber
-                                                        $Message =  "Overwriting another module to allow import of $ModuleName !"
-                                                        If ($ModECK -eq $true){Write-ECKlog -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
-                                                    }
-                                                Else
-                                                    {
-                                                        $Message =  "Commandlet of Module $ModuleName already loaded using... ...another module, skipping import !"
-                                                        If ($ModECK -eq $true){Write-ECKlog -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
-                                                    }
-                                            }
-                                        else 
-                                            {
-                                                If ($ModuleName -like "*Endpointcloudkit*")
-                                                    {
-                                                        $Message =  "[FATAL ERROR] unable to import endpointcloudkit, Aborting !"
-                                                        If ($ModECK -eq $true){Write-ECKlog -Message $Message -Type 3} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
-                                                        Exit 1
-                                                    }
-                                                else
-                                                    {
-                                                        $Message =  "[ERROR] unable to load Module $ModuleName, skipping import !"
-                                                        If ($ModECK -eq $true){Write-ECKlog -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
-                                                    }
-                                            }
-                                    }
-                            }
-                        Else
+                        If ($a -ne "0.0")
                             {
                                 Remove-module -Name $ModuleName -ErrorAction SilentlyContinue -Force
                                 Uninstall-Module -Name $ModuleName -AllVersions -Force -Confirm:$false -ErrorAction SilentlyContinue
-                                Try 
+                            }
+
+                        Try 
+                            {
+                                Install-Module -Name $ModuleName -Force -ErrorAction Stop
+                                Set-ItemProperty "HKLM:\SOFTWARE\ECK\DependenciesCheck" -Name $ModuleName -value $((get-date).date)
+                            }
+                        Catch
+                            {
+                                If ($_.FullyQualifiedErrorId -like "*CommandAlreadyAvailable*")
                                     {
-                                        Install-Module -Name $ModuleName -Force -ErrorAction Stop
-                                        Set-ItemProperty "HKLM:\SOFTWARE\ECK\DependenciesCheck" -Name $ModuleName -value $((get-date).date)
-                                    }
-                                Catch
-                                    {
-                                        If ($_.FullyQualifiedErrorId -like "*CommandAlreadyAvailable*")
+                                        If ($ModuleName -like "*endpointcloudkit*")
                                             {
-                                                If ($ModuleName -like "*endpointcloudkit*")
-                                                    {
-                                                        Install-Module -Name $ModuleName -Force -AllowClobber
-                                                        $Message =  "Overwriting another module to allow import of $ModuleName !"
-                                                        If ($ModECK -eq $true){Write-ECKlog -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
-                                                    }
-                                                Else
-                                                    {
-                                                    	$Message =  "Commandlet of Module $ModuleName already loaded using... ...another module, skipping import !"
-                                                        If ($ModECK -eq $true){Write-ECKlog -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
-                                                    }
+                                                Install-Module -Name $ModuleName -Force -AllowClobber
+                                                $Message =  "Overwriting another module to allow import of $ModuleName !"
+                                                If ($ModECK -eq $true){Write-ECKlog -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
                                             }
-                                        else 
+                                        Else
                                             {
-                                                If ($ModuleName -like "*Endpointcloudkit*")
-                                                    {
-                                                        $Message =  "[FATAL ERROR] unable to import endpointcloudkit, Aborting !"
-                                                        If ($ModECK -eq $true){Write-ECKlog -Message $Message -Type 3} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
-                                                        Exit 1
-                                                    }
-                                                else 
-                                                    {
-                                                        $Message =  "[ERROR] unable to load Module $ModuleName, skipping import !"
-                                                        If ($ModECK -eq $true){Write-ECKlog -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
-                                                    }
+                                                $Message =  "Commandlet of Module $ModuleName already loaded using... ...another module, skipping import !"
+                                                If ($ModECK -eq $true){Write-ECKlog -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
+                                            }
+                                    }
+                                else 
+                                    {
+                                        If ($ModuleName -like "*Endpointcloudkit*")
+                                            {
+                                                $Message =  "[FATAL ERROR] unable to import endpointcloudkit, Aborting !"
+                                                If ($ModECK -eq $true){Write-ECKlog -Message $Message -Type 3} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
+                                                Exit 1
+                                            }
+                                        else
+                                            {
+                                                $Message =  "[ERROR] unable to load Module $ModuleName, skipping import !"
+                                                If ($ModECK -eq $true){Write-ECKlog -Message $Message} else {$Message|Out-file -FilePath $LogPath -Encoding UTF8 -Append -ErrorAction SilentlyContinue}
                                             }
                                     }
                             }
-    
+
                         return [PSCustomObject]@{NeedUpdate = $True ; ModuleName = $ModuleName ; LocalVersion = $version ; OnlineVersion = $psgalleryversion}
                     }
                 Else
