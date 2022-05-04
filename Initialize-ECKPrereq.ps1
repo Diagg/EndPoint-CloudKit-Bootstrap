@@ -170,7 +170,7 @@ Function Initialize-ECKPrereq
                 If ((Get-PSRepository -Name "PsGallery").InstallationPolicy -ne "Trusted"){Set-PSRepository -Name 'PSGallery' -InstallationPolicy 'Trusted' -SourceLocation 'https://www.powershellgallery.com/api/v2'}
 
                 # Add mandatory modules
-                If ('endpointcloudkit' -notin $Module){$Module += "endpointcloudkit-Alpha" ; $Module = $Module|Sort-Object -Descending}
+                If ('endpointcloudkit' -notin $Module){$Module += "endpointcloudkit" ; $Module = $Module|Sort-Object -Descending}
                 If ($PsGetVersion -lt [version]"2.2.5" -and 'PowershellGet' -notin $Module){$Module += "PowershellGet" ; $Module = $Module|Sort-Object -Descending}
 
                 # Installing modules
