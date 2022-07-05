@@ -69,7 +69,7 @@ Download ans store in "$env:temp\ECK-Content" two scripts from Gist !
 # Script Version 2.2.6 - 24/06/2022 - Added logic to logpath
 # Script Version 2.2.7 - 27/06/2022 - Added support fot Trevor Jones's Gist script New-WPFMessageBox
 # Script Version 2.2.8 - 05/07/2022 - Removed support for Gist script New-WPFMessageBox (sorry folks !)
-# Script Version 2.2.81 - 05/07/2022 - Debug
+# Script Version 2.2.82 - 05/07/2022 - Debug
 
 
 Function Initialize-ECKPrereq
@@ -89,8 +89,10 @@ Function Initialize-ECKPrereq
                 If (-NOT ([Security.Principal.WindowsIdentity]::GetCurrent().Groups -contains 'S-1-5-32-544') -or ($env:USERPROFILE -eq "C:\Windows\System32\Config\systemprofile")) {$LogPath = "$($env:TMP)\ECK-Init.log"}
                 Elseif ($null -ne $eck.LogFullName){$LogPath = $eck.LogFullName}
                 Else {$LogPath = "C:\Windows\Logs\ECK\ECK-Init.log"}
-                Write-host "LogPath: $LogPath"
+
             }
+
+            Write-host "LogPath: $LogPath"    
         ## Create Folders and registry keys
         If (-not (Test-Path $ContentPath)){New-Item $ContentPath -ItemType Directory -Force|Out-Null}
         If (-not (Test-Path $(Split-Path $LogPath ))){New-Item $(Split-Path $LogPath) -ItemType Directory -Force|Out-Null}
