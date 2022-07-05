@@ -67,6 +67,9 @@ Download ans store in "$env:temp\ECK-Content" two scripts from Gist !
 # Script Version 2.2.4 - 04/05/2022 - Bug Fix
 # Script Version 2.2.5 - 22/05/2022 - Changed Log messaging on external download
 # Script Version 2.2.6 - 24/06/2022 - Added logic to logpath
+# Script Version 2.2.7 - 27/06/2022 - Added support fot Trevor Jones's Gist script New-WPFMessageBox
+# Script Version 2.2.8 - 05/07/2022 - Removed support for Gist script New-WPFMessageBox (sorry folks !)
+
 
 Function Initialize-ECKPrereq
     {
