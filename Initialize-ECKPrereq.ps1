@@ -76,7 +76,7 @@ Function Initialize-ECKPrereq
     {
         Param (
                 [String[]]$Module,                                                                              # List of module to import separated by coma
-                [string]$LogPath = $eck.LogFullName,                                                                               # Defaut log file path
+                [string]$LogPath = $eck.LogFullName,                                                            # Defaut log file path
                 [bool]$NugetDevTool = $false,                                                                   # Allow installation of nuget.exe,
                 [Parameter(ParameterSetName="Contentload")][String[]]$ContentToLoad,                            # Download scripts form Github and place them in $ContentPath folder
                 [Parameter(ParameterSetName="Contentload")][String]$ContentPath = 'C:\ProgramData\ECK-Content', # Path where script are downloaded
