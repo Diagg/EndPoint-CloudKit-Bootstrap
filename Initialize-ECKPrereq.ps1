@@ -76,7 +76,7 @@ Function Initialize-ECKPrereq
     {
         Param (
                 [String[]]$Module,                                                                              # List of module to import separated by coma
-                [string]$LogPath = $eck.LogFullName,                                                            # Defaut log file path
+                [string]$LogPath,                                                            # Defaut log file path
                 [bool]$NugetDevTool = $false,                                                                   # Allow installation of nuget.exe,
                 [Parameter(ParameterSetName="Contentload")][String[]]$ContentToLoad,                            # Download scripts form Github and place them in $ContentPath folder
                 [Parameter(ParameterSetName="Contentload")][String]$ContentPath = 'C:\ProgramData\ECK-Content', # Path where script are downloaded
@@ -84,10 +84,13 @@ Function Initialize-ECKPrereq
             )
 
         ## Set LogPath
-        If (-NOT ([Security.Principal.WindowsIdentity]::GetCurrent().Groups -contains 'S-1-5-32-544') -and ($env:USERPROFILE -eq "C:\Windows\System32\Config\systemprofile")) {$LogPath = "$($env:TMP)\ECK-Init.log"}
-        If ([string]::IsnullOrwhitespace($LogPath)){$LogPath = "C:\Windows\Logs\ECK\ECK-Init.log"}
+        If ($null -eq $logpath)
+            {
+                If (-NOT ([Security.Principal.WindowsIdentity]::GetCurrent().Groups -contains 'S-1-5-32-544') -or ($env:USERPROFILE -eq "C:\Windows\System32\Config\systemprofile")) {$LogPath = "$($env:TMP)\ECK-Init.log"}
+                Elseif ($null -ne $eck.LogFullName){$LogPath = $eck.LogFullName}
+                Else {$LogPath = "C:\Windows\Logs\ECK\ECK-Init.log"}
+            }
 
-        
         ## Create Folders and registry keys
         If (-not (Test-Path $ContentPath)){New-Item $ContentPath -ItemType Directory -Force|Out-Null}
         If (-not (Test-Path $(Split-Path $LogPath ))){New-Item $(Split-Path $LogPath) -ItemType Directory -Force|Out-Null}
@@ -109,7 +112,12 @@ Function Initialize-ECKPrereq
         $CurrentValue = [Environment]::GetEnvironmentVariable("PSModulePath", "Machine")
         If ($CurrentValue -notlike "*C:\Program Files\WindowsPowerShell\scripts*") {[Environment]::SetEnvironmentVariable("PSModulePath", $CurrentValue + [System.IO.Path]::PathSeparator + "C:\Program Files\WindowsPowerShell\Scripts", "Machine")}
 
-        Try 
+       ## Unload Modules
+       Remove-Module Powershellget -Force -Confirm:$false -ErrorAction SilentlyContinue
+       Remove-Module PackageManagement -Force -Confirm:$false -ErrorAction SilentlyContinue
+
+
+       Try
             {
                 ##Log with previous version if any
                 If ((Get-Module 'endpointcloudkit' -ListAvailable).Name -eq 'EndpointCloudkit')
@@ -227,7 +235,7 @@ Function Initialize-ECKPrereq
                         Invoke-WebRequest -Uri 'https://github.com/SeidChr/RunHiddenConsole/releases/download/1.0.0-alpha.2/hiddenw.exe' -OutFile $PowershellwPath -ErrorAction SilentlyContinue
                         If (test-path $PowershellwPath){Write-ECKlog -Message "Successfully Downloaded $PowershellwPath !" -Path $LogPath} Else {Write-ECKlog -Message "[ERROR] Unable to download $PowershellwPath !" -Path $LogPath}
                     }
-                else 
+                else
                     {Write-ECKlog -Message "$PowershellwPath Already downloaded!" -Path $LogPath}
 
                 ##Install SerciceUI_X64.exe
@@ -237,9 +245,9 @@ Function Initialize-ECKPrereq
                         Invoke-WebRequest -Uri $(Format-GitHubURL 'https://github.com/Diagg/EndPoint-CloudKit-Bootstrap/blob/master/ServiceUI/ServiceUI_x64.exe') -OutFile $SrvUIPath -ErrorAction SilentlyContinue
                         If (test-path $SrvUIPath){Write-ECKlog -Message "Successfully Downloaded $SrvUIPath !" -Path $LogPath} Else {Write-ECKlog -Message "[ERROR] Unable to download $SrvUIPath !" -Path $LogPath}
                     }
-                else 
+                else
                     {Write-ECKlog -Message "$SrvUIPath Already downloaded!" -Path $LogPath}                    
-                
+
 
                 ##Install SerciceUI_X86.exe
                 $SrvUIPath = 'C:\Windows\SysWOW64\ServiceUI.exe'
@@ -248,38 +256,42 @@ Function Initialize-ECKPrereq
                         Invoke-WebRequest -Uri $(Format-GitHubURL 'https://github.com/Diagg/EndPoint-CloudKit-Bootstrap/blob/master/ServiceUI/ServiceUI_x86.exe') -OutFile $SrvUIPath -ErrorAction SilentlyContinue
                         If (test-path $SrvUIPath){Write-ECKlog -Message "Successfully Downloaded $SrvUIPath !" -Path $LogPath} Else {Write-ECKlog -Message "[ERROR] Unable to download $SrvUIPath !" -Path $LogPath}                       
                     }
-                else 
+                else
                     {Write-ECKlog -Message "$SrvUIPath Already downloaded!" -Path $LogPath}
 
                 # Download Script and execute
-                Foreach ($cript in $ScriptToImport)
+                If (-not([string]::IsNullOrWhiteSpace($ScriptToImport)))
                     {
-                        $ScriptURI = Format-GitHubURL -URI $cript -LogPath $LogPath
-                        Try
+                        Foreach ($cript in $ScriptToImport)
                             {
-                                $Fileraw = (Invoke-WebRequest -URI $ScriptURI -UseBasicParsing -ErrorAction Stop).content
-                                Write-ECKlog -Message "Running script $($ScriptURI.split("/")[-1]) !!!" -Path $LogPath
-                                Invoke-expression $Fileraw -ErrorAction stop
+                                $ScriptURI = Format-GitHubURL -URI $cript -LogPath $LogPath
+                                Try
+                                    {
+                                        $Fileraw = (Invoke-WebRequest -URI $ScriptURI -UseBasicParsing -ErrorAction Stop).content
+                                        Write-ECKlog -Message "Running script $($ScriptURI.split("/").split("#")[-1]) !!!" -Path $LogPath
+                                        Invoke-expression $Fileraw -ErrorAction stop
+                                    }
+                                Catch
+                                    {Write-ECKlog -Message "[ERROR] Unable to get script content or error in execution, Aborting !!!" -Path $LogPath; Exit 1}
                             }
-                        Catch
-                            {Write-ECKlog -Message "[ERROR] Unable to get script content or error in execution, Aborting !!!" -Path $LogPath; Exit 1}
                     }
-
 
                 # Download Script and store them
-                Foreach ($File in $ContentToLoad)
+                If (-not([string]::IsNullOrWhiteSpace($ContentToLoad)))
                     {
-                        $FiletURI = Format-GitHubURL -URI $File -LogPath $LogPath
-                        Try
+                        Foreach ($File in $ContentToLoad)
                             {
-                                $Fileraw = (Invoke-WebRequest -URI $FiletURI -UseBasicParsing -ErrorAction Stop).content
-                                Write-ECKlog -Message "Succesfully downloaded content to $ContentPath\$($FiletURI.split("/")[-1]) !!!" -Path $LogPath
-                                $Fileraw | Out-File -FilePath "$ContentPath\$($FiletURI.split("/")[-1])" -Encoding utf8 -force
+                                $FiletURI = Format-GitHubURL -URI $File -LogPath $LogPath
+                                Try
+                                    {
+                                        $Fileraw = (Invoke-WebRequest -URI $FiletURI -UseBasicParsing -ErrorAction Stop).content
+                                        Write-ECKlog -Message "Succesfully downloaded content to $ContentPath\$($FiletURI.split("/").split("#")[-1]) !!!" -Path $LogPath
+                                        $Fileraw | Out-File -FilePath "$ContentPath\$($FiletURI.split("/").split("#")[-1])" -Encoding utf8 -force
+                                    }
+                                Catch
+                                    {Write-ECKlog -Message "[ERROR] Unable to get content, Aborting !!!" -Path $LogPath; Exit 1}
                             }
-                        Catch
-                            {Write-ECKlog -Message "[ERROR] Unable to get content, Aborting !!!" -Path $LogPath; Exit 1}
                     }
-
                 Write-ECKlog -Message "All initialization operations finished, Endpoint Cloud Kit and other dependencies staged sucessfully!!!" -Path $LogPath
             }
         Catch
